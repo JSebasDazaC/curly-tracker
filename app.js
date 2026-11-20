@@ -1013,7 +1013,7 @@
     last_name: { label: 'Apellido', placeholder: 'Añade tu apellido', max: 40, type: 'text' },
     username: { label: 'usuario único', placeholder: 'tu.usuario', max: 20, type: 'text', prefix: '@' },
     display_name: { label: 'nombre a mostrar', placeholder: 'Tu nombre', max: 80, type: 'text' },
-    bio: { label: 'biografía', placeholder: 'Cuéntanos algo sobre tu rutina...', max: 160, type: 'textarea' },
+    bio: { label: 'biografía', placeholder: 'Cuéntanos algo sobre tu rutina...', max: 160, type: 'text' },
     curl_pattern: { label: 'patrón de rizo', type: 'select', options: [['2C', '2C · Ondas definidas'], ['3A', '3A · Rizos sueltos'], ['3B', '3B · Rizos medianos'], ['3C', '3C · Rizos apretados'], ['4A', '4A · Rizos muy apretados']] },
     porosity: { label: 'porosidad', type: 'select', options: [['baja', 'Baja · Absorbe despacio'], ['media', 'Media · Equilibrada'], ['alta', 'Alta · Absorbe rápido']] },
     thickness: { label: 'grosor del cabello', type: 'select', options: [['fino', 'Fino'], ['medio', 'Medio'], ['grueso', 'Grueso']] },
@@ -1060,8 +1060,8 @@
       : `<span class="faint">${esc(displayName())}</span>`;
     const bioHtml = p.bio ? esc(p.bio) : '<span class="faint">Añade una biografía</span>';
     const usernameHtml = p.username
-      ? `<span class="chip inline-editable" ${inlineAttrs('username')}>@${esc(p.username)}</span>`
-      : `<span class="chip faint inline-editable" ${inlineAttrs('username')}>Añade tu usuario</span>`;
+      ? `<span class="inline-editable inline-username" ${inlineAttrs('username')}>@${esc(p.username)}</span>`
+      : `<span class="inline-editable inline-username faint" ${inlineAttrs('username')}>@tu.usuario</span>`;
     const profileFields = [p.first_name, p.last_name, p.username, p.display_name, p.bio, p.avatar_url, p.banner_url, p.curl_pattern, p.porosity, p.thickness, p.goal];
     const completePercent = Math.round(profileFields.filter(Boolean).length / profileFields.length * 100);
     const progressHtml = completePercent >= 100 ? '' : `
@@ -1087,9 +1087,11 @@
           </div>
           <p class="max-w-[55%] text-right text-sm muted">${fullNameHtml}</p>
         </div>
-        <h2 class="mt-3 break-words text-2xl font-semibold leading-snug"><span class="inline-editable" ${inlineAttrs('display_name')}>${shownName}</span></h2>
+        <div class="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 class="break-words text-2xl font-semibold leading-snug"><span class="inline-editable" ${inlineAttrs('display_name')}>${shownName}</span></h2>
+          ${usernameHtml}
+        </div>
         <p class="mt-3 max-w-2xl text-sm leading-relaxed text-[#d4d4d8]"><span class="inline-editable" ${inlineAttrs('bio')}>${bioHtml}</span></p>
-        <div class="mt-4 flex flex-wrap gap-2">${usernameHtml}</div>
         ${progressHtml}
       </div>`;
   }
@@ -1121,10 +1123,6 @@
         input.appendChild(option);
       });
       input.value = original;
-    } else if (meta.type === 'textarea') {
-      input = document.createElement('textarea');
-      input.rows = 1;
-      input.value = original;
     } else {
       input = document.createElement('input');
       input.type = 'text';
@@ -1132,17 +1130,10 @@
       input.maxLength = (meta.max || 80) + (meta.prefix ? 1 : 0);
     }
     input.className = meta.type === 'select' ? 'field' : 'inline-input';
-    if (meta.type !== 'select' && node.classList.contains('chip')) input.classList.add('inline-chip');
     input.setAttribute('aria-label', meta.label);
     if (meta.placeholder) input.placeholder = meta.placeholder;
 
-    const actions = meta.type === 'select' ? null : document.createElement('span');
-    if (actions) {
-      actions.className = 'inline-actions';
-      actions.innerHTML = `<button type="button" data-inline-save title="Guardar" aria-label="Guardar">${icon('check', 'h-3.5 w-3.5')}</button><button type="button" data-inline-cancel title="Cancelar" aria-label="Cancelar">${icon('close', 'h-3.5 w-3.5')}</button>`;
-    }
-    if (actions) wrap.append(input, actions);
-    else wrap.appendChild(input);
+    wrap.appendChild(input);
 
     const sizer = document.createElement('span');
     sizer.className = 'inline-sizer';
@@ -1170,20 +1161,12 @@
     }
     focusNode.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') { event.preventDefault(); cancelInlineEdit(); }
-      else if (event.key === 'Enter' && (meta.type !== 'textarea' || event.ctrlKey || event.metaKey)) {
+      else if (event.key === 'Enter') {
         event.preventDefault();
         commitInlineEdit();
       }
     });
     if (meta.type === 'select') input.addEventListener('change', () => commitInlineEdit());
-    if (actions) {
-      const saveBtn = $('[data-inline-save]', actions);
-      const cancelBtn = $('[data-inline-cancel]', actions);
-      saveBtn.addEventListener('mousedown', (event) => event.preventDefault());
-      cancelBtn.addEventListener('mousedown', (event) => event.preventDefault());
-      saveBtn.addEventListener('click', () => commitInlineEdit());
-      cancelBtn.addEventListener('click', cancelInlineEdit);
-    }
   }
 
   function restoreInlineNode(edit) {
@@ -2708,7 +2691,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=41');
+        await navigator.serviceWorker.register('./sw.js?v=42');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
@@ -2832,8 +2815,6 @@
   /* ---------------- Eventos ---------------- */
   document.addEventListener('click', (event) => {
     const target = event.target;
-
-    if (target.closest('.inline-actions')) return;
 
     const selectTrigger = target.closest('.select-trigger');
     if (selectTrigger) { toggleSelect(selectTrigger); return; }

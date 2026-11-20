@@ -240,6 +240,7 @@
     }
     .inline-editable.inline-select:hover .inline-select-chevron,
     .inline-editable.inline-select:focus-visible .inline-select-chevron { opacity: 1; }
+    .inline-username { font-size: 13px; font-weight: 500; color: #a1a1aa; opacity: .85; }
     .inline-edit-wrap {
       position: absolute; inset: -1.5px; display: inline-flex; align-items: stretch; white-space: nowrap;
     }
@@ -249,11 +250,6 @@
       padding: 1px 5px; border: 2px solid rgba(161,161,170,.72); border-radius: 7px;
       background: #121214; color: inherit; font: inherit; line-height: inherit; outline: none;
     }
-    .inline-input.inline-chip {
-      padding: 5px 10px; border-radius: 999px; background: #09090b;
-      font-size: 12px; line-height: 1.2;
-    }
-    textarea.inline-input { resize: none; }
     .inline-edit-wrap .custom-select { flex: 0 0 100%; min-width: 0; }
     .inline-edit-wrap .select-trigger {
       display: flex; align-items: center; justify-content: space-between; gap: 6px; border-color: transparent;
@@ -261,12 +257,6 @@
     .inline-edit-wrap .select-chevron { width: 14px; height: 14px; }
     .inline-edit-wrap .select-menu { left: -1.5px; right: auto; min-width: calc(100% + 3px); }
     .inline-edit-wrap .select-option { font-size: inherit; }
-    .inline-actions { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
-    .inline-actions button {
-      display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center;
-      border: 1px solid #3f3f46; border-radius: 8px; background: #09090b; color: #fafafa;
-    }
-    .inline-actions button:hover { border-color: #a1a1aa; }
     .hint-ok { color: #a1a1aa; }
     .hint-error { color: #fafafa; }
 
@@ -712,6 +702,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="./supabase.js?v=32"></script>
-  <script src="./app.js?v=41"></script>
+  <script src="./app.js?v=42"></script>
 </body>
 </html>
