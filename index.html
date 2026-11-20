@@ -459,24 +459,24 @@
               </div>
               <span id="cloudStatus" class="chip chip-warn">Modo local</span>
             </div>
-            <div class="mt-5 flex flex-wrap items-center justify-between gap-4">
-              <div class="min-w-0">
-                <p class="faint text-[11px] uppercase tracking-wider">Correo electrónico</p>
-                <p id="accountEmail" class="mt-0.5 truncate text-sm font-medium">Invitado</p>
+            <p class="label mt-5">Accesos vinculados</p>
+            <p class="mt-1 text-xs muted">Entra con el método que te resulte más rápido.</p>
+            <div class="mt-3 divide-y divide-[#27272a]">
+              <div class="flex items-center justify-between gap-3 pb-3">
+                <div class="min-w-0">
+                  <p class="faint text-[11px] uppercase tracking-wider">Correo electrónico</p>
+                  <p id="accountEmail" class="mt-0.5 truncate text-sm font-medium">Invitado</p>
+                </div>
+                <span class="shrink-0 text-[11px] faint">Principal</span>
               </div>
-              <div class="flex flex-wrap gap-2">
-                <button id="forceSyncBtn" class="btn-ghost btn-mini" type="button">Sincronizar ahora</button>
-                <button id="signOutBtn" class="btn-ghost btn-mini" type="button">Cerrar sesión</button>
-                <button id="localLoginBtn" class="btn-primary btn-mini hidden" type="button">Iniciar sesión</button>
-              </div>
+              <div id="connectionsList"></div>
             </div>
             <p id="accountHint" class="mt-3 text-xs faint"></p>
+            <p id="connectionsHint" class="mt-2 text-[11px] faint"></p>
             <div class="hairline my-5"></div>
-            <div>
-              <p class="label">Accesos vinculados</p>
-              <p class="mt-1 text-xs muted">Entra con el método que te resulte más rápido.</p>
-              <div id="connectionsList" class="mt-3 flex flex-wrap gap-2"></div>
-              <p id="connectionsHint" class="mt-2 text-[11px] faint"></p>
+            <div class="flex flex-wrap gap-2">
+              <button id="signOutBtn" class="btn-ghost btn-mini" type="button">Cerrar sesión</button>
+              <button id="localLoginBtn" class="btn-primary btn-mini hidden" type="button">Iniciar sesión</button>
             </div>
           </div>
 
@@ -720,6 +720,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js?v=23"></script>
+  <script src="./app.js?v=24"></script>
 </body>
 </html>

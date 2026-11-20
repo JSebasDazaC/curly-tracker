@@ -59,6 +59,8 @@
     { id: 'facebook', label: 'Facebook', mark: 'f' }
   ];
 
+  const SYNC_RETRY_MS = 8000;
+
   const PRESET_TOOLS = [
     'Cepillo definidor de 9 hileras tipo Denman',
     'Cepillo flexible desenredante',
@@ -1303,14 +1305,12 @@
     if (signOut) signOut.classList.toggle('hidden', !signedIn);
     const login = $('#localLoginBtn');
     if (login) login.classList.toggle('hidden', signedIn);
-    const sync = $('#forceSyncBtn');
-    if (sync) sync.classList.toggle('hidden', !signedIn);
     const hint = $('#accountHint');
     if (hint) {
       if (!signedIn) hint.textContent = 'Estás en modo local. Inicia sesión para sincronizar entre dispositivos.';
       else if (syncState.pending) hint.textContent = 'Sincronizando tus datos con tu cuenta…';
-      else if (syncState.ready) hint.textContent = 'Tus cambios se sincronizan con tu cuenta.';
-      else hint.textContent = 'Tu cuenta está conectada, pero no pudimos sincronizar los datos. Toca «Sincronizar ahora» para reintentar.';
+      else if (syncState.ready) hint.textContent = 'Tus cambios se sincronizan automáticamente con tu cuenta.';
+      else hint.textContent = 'Tu cuenta está conectada. Sincronizaremos tus datos automáticamente en cuanto estén disponibles.';
     }
 
     const nameNode = $('#sideMiniName');
@@ -1343,26 +1343,35 @@
     const user = syncState.session && syncState.session.user ? syncState.session.user : null;
 
     if (!user) {
-      holder.innerHTML = '<span class="text-xs faint">Inicia sesión para ver tus accesos.</span>';
+      holder.innerHTML = '<p class="py-3 text-xs faint">Inicia sesión para ver tus accesos.</p>';
       if (hint) hint.textContent = '';
       return;
     }
     if (syncState.connectionsLoading) {
-      holder.innerHTML = '<span class="text-xs faint">Cargando accesos…</span>';
+      holder.innerHTML = '<p class="py-3 text-xs faint">Cargando accesos…</p>';
       if (hint) hint.textContent = '';
       return;
     }
 
-    const linked = new Set((syncState.identities || []).map((item) => item.provider).filter(Boolean));
-    const chips = [`<span class="chip chip-ok">${icon('check', 'h-3.5 w-3.5')}Correo</span>`];
-    LINK_PROVIDERS.forEach((provider) => {
-      if (linked.has(provider.id)) {
-        chips.push(`<span class="chip chip-ok">${providerMark(provider.id)}${provider.label}${icon('check', 'h-3.5 w-3.5')}</span>`);
-      } else {
-        chips.push(`<button class="chip" type="button" data-link-provider="${provider.id}">${providerMark(provider.id)}Vincular ${provider.label}${icon('plus', 'h-3.5 w-3.5')}</button>`);
-      }
-    });
-    holder.innerHTML = chips.join('');
+    const identities = syncState.identities || [];
+    const linked = new Set(identities.map((item) => item.provider).filter(Boolean));
+    holder.innerHTML = LINK_PROVIDERS.map((provider) => {
+      const isLinked = linked.has(provider.id);
+      const canUnlink = identities.length > 1;
+      const action = isLinked
+        ? `<button class="btn-ghost btn-mini shrink-0" type="button" data-unlink-provider="${provider.id}" ${canUnlink ? '' : 'disabled title="Debe conservar al menos un acceso"'}>Desvincular</button>`
+        : `<button class="btn-ghost btn-mini shrink-0" type="button" data-link-provider="${provider.id}">Vincular</button>`;
+      return `<div class="flex items-center justify-between gap-3 py-3">
+        <div class="flex min-w-0 items-center gap-3">
+          <span class="shrink-0">${providerMark(provider.id)}</span>
+          <div class="min-w-0">
+            <p class="truncate text-sm font-medium">${provider.label}</p>
+            <p class="mt-0.5 text-[11px] faint">${isLinked ? 'Vinculado' : 'No vinculado'}</p>
+          </div>
+        </div>
+        ${action}
+      </div>`;
+    }).join('');
     if (hint) hint.textContent = linked.size > 1
       ? 'Puedes entrar con cualquiera de estos accesos.'
       : 'Vincula otro acceso para entrar más rápido.';
@@ -1426,6 +1435,28 @@
       toast(message.includes('manual linking') || message.includes('linking is not enabled')
         ? 'Activa la vinculación manual en Supabase para conectar este acceso.'
         : `No se pudo vincular ${provider.label}. Vuelve a intentarlo.`);
+    }
+  }
+
+  async function unlinkProvider(providerId) {
+    const provider = LINK_PROVIDERS.find((item) => item.id === providerId);
+    if (!provider) return;
+    const user = syncState.session && syncState.session.user ? syncState.session.user : null;
+    if (!sb || !user) { showLogin(); return; }
+    const identity = (syncState.identities || []).find((item) => item.provider === providerId);
+    if (!identity) { await refreshConnections(true); return; }
+
+    toast(`Desvinculando ${provider.label}…`);
+    try {
+      const { error } = await sb.auth.unlinkIdentity(identity);
+      if (error) throw error;
+      await refreshConnections(true);
+      toast(`${provider.label} desvinculado`);
+    } catch (error) {
+      const message = String(error && error.message || '').toLowerCase();
+      toast(message.includes('single_identity') || message.includes('al menos')
+        ? 'Debes conservar al menos un acceso.'
+        : `No se pudo desvincular ${provider.label}. Vuelve a intentarlo.`);
     }
   }
 
@@ -1674,9 +1705,19 @@
   function setSyncState(ready, session) {
     syncState.ready = ready;
     syncState.session = session || null;
+    if (ready) clearTimeout(syncState.retryTimer);
     renderSyncStatus();
     renderAccount();
     refreshConnections();
+  }
+
+  function scheduleSyncRetry(generation) {
+    clearTimeout(syncState.retryTimer);
+    syncState.retryTimer = setTimeout(async () => {
+      if (generation !== syncState.generation || !syncState.session || syncState.ready || syncState.pending) return;
+      await pullCloud(syncState.session, { generation }).catch(() => {});
+      if (generation === syncState.generation && !syncState.ready) scheduleSyncRetry(generation);
+    }, SYNC_RETRY_MS);
   }
 
   function mapProfile(row) {
@@ -1733,6 +1774,7 @@
       if (failed) {
         setSyncState(false, session);
         console.warn('Curly Tracker: no se pudieron leer los datos de la nube.', { profileRes, productsRes, toolsRes, logsRes });
+        scheduleSyncRetry(generation);
         return false;
       }
 
@@ -1757,6 +1799,13 @@
       if (!hasRemote) await pushCloud(false);
       else if (options.toast) toast('Datos actualizados desde la nube');
       return syncState.ready;
+    } catch (error) {
+      if (isCurrent()) {
+        setSyncState(false, session);
+        console.warn('Curly Tracker: error al sincronizar.', error);
+        scheduleSyncRetry(generation);
+      }
+      return false;
     } finally {
       if (isCurrent()) {
         syncState.pending = false;
@@ -1805,9 +1854,10 @@
   // Respaldo cuando el WebSocket de Realtime se duerme (PWA en segundo plano).
   function startCrossDeviceSync() {
     const refresh = () => {
-      if (!syncState.session || !syncState.ready || document.hidden) return;
+      if (!syncState.session || syncState.pending || document.hidden) return;
       if ($('#modalRoot').innerHTML) return;
-      pullCloud(syncState.session).catch(() => {});
+      if (!syncState.ready) pullCloud(syncState.session, { generation: syncState.generation }).catch(() => {});
+      else pullCloud(syncState.session).catch(() => {});
     };
     document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
     window.addEventListener('focus', refresh);
@@ -1919,6 +1969,7 @@
       if (!isCurrent()) return;
       console.warn('Curly Tracker: sincronización no disponible.', error);
       setSyncState(false, syncState.session);
+      scheduleSyncRetry(generation);
       if (!syncState.errorShown) {
         toast('Sin sincronización. Datos guardados aquí.');
         syncState.errorShown = true;
@@ -2428,13 +2479,7 @@
     setSyncState(false, session);
     await pullCloud(session, { generation });
     if (generation !== syncState.generation) return;
-    if (!syncState.ready) {
-      syncState.retryTimer = setTimeout(() => {
-        if (generation === syncState.generation && syncState.session) {
-          pullCloud(syncState.session, { generation }).catch(() => {});
-        }
-      }, 2000);
-    }
+    if (!syncState.ready) scheduleSyncRetry(generation);
     const completed = await applyAuthMetadata(session);
     if (generation !== syncState.generation) return;
     renderAll();
@@ -2485,7 +2530,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=23');
+        await navigator.serviceWorker.register('./sw.js?v=24');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
@@ -2632,6 +2677,9 @@
 
     const linkProviderBtn = target.closest('[data-link-provider]');
     if (linkProviderBtn) { linkProvider(linkProviderBtn.dataset.linkProvider); return; }
+
+    const unlinkProviderBtn = target.closest('[data-unlink-provider]');
+    if (unlinkProviderBtn && !unlinkProviderBtn.disabled) { unlinkProvider(unlinkProviderBtn.dataset.unlinkProvider); return; }
 
     const nav = target.closest('[data-nav]');
     if (nav) { closeModal(); setView(nav.dataset.nav); return; }
@@ -2813,27 +2861,6 @@
 
     $('#askPermissionBtn').addEventListener('click', () => Notifications.requestPermission());
     $('#testNotifBtn').addEventListener('click', () => Notifications.test());
-
-    $('#forceSyncBtn').addEventListener('click', async () => {
-      if (!syncState.session) { toast('Inicia sesión para sincronizar'); return; }
-      const button = $('#forceSyncBtn');
-      const originalText = button.textContent;
-      button.disabled = true;
-      button.textContent = 'Sincronizando…';
-      try {
-        const ok = await pullCloud(syncState.session);
-        if (ok) {
-          subscribeRealtime(syncState.session);
-          await pushCloud(false);
-          toast('Datos sincronizados');
-        } else {
-          toast('No se pudo sincronizar. Revisa tu conexión e inténtalo de nuevo.');
-        }
-      } finally {
-        button.disabled = false;
-        button.textContent = originalText;
-      }
-    });
 
     $('#signOutBtn').addEventListener('click', async () => {
       if (sb) await sb.auth.signOut();
