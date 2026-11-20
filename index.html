@@ -234,18 +234,14 @@
     .inline-editable {
       cursor: text; outline: none; transition: border-color .15s ease;
     }
-    .inline-editable:not(.chip) { border: 1px solid transparent; border-radius: 6px; }
-    .inline-editable:hover, .inline-editable:focus-visible { border-color: #a1a1aa; }
-    .inline-editable::after { content: "✎"; margin-left: 6px; font-size: 10px; color: #a1a1aa; opacity: 0; }
-    .inline-editable:hover::after, .inline-editable:focus-visible::after,
-    .inline-editable:focus-within::after { opacity: .7; }
-    @media (hover: none) { .inline-editable::after { opacity: .55; } }
+    .inline-editable:not(.chip) { border: 2px solid transparent; border-radius: 7px; padding: 1px 5px; }
+    .inline-editable.chip { border-width: 2px; }
+    .inline-editable:hover, .inline-editable:focus-visible { border-color: rgba(161,161,170,.72); }
     .inline-editable.inline-editing { border-color: transparent; background: transparent; box-shadow: none; }
-    .inline-editable.inline-editing::after { content: none; }
     .inline-edit-wrap { display: inline-flex; max-width: 100%; align-items: center; gap: 6px; }
     .inline-input {
       display: inline-block; flex: 0 1 auto; width: auto; min-width: 8ch; max-width: 100%;
-      padding: 2px 6px; border: 1px solid #a1a1aa; border-radius: 6px;
+      padding: 2px 7px; border: 2px solid rgba(161,161,170,.72); border-radius: 7px;
       background: transparent; color: inherit; font: inherit; line-height: inherit; outline: none;
       field-sizing: content;
     }
@@ -684,6 +680,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js?v=30"></script>
+  <script src="./app.js?v=31"></script>
 </body>
 </html>
