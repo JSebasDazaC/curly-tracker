@@ -355,7 +355,6 @@
       <p class="label mt-10 px-3">Navegación</p>
       <nav class="mt-2 space-y-1" aria-label="Navegación principal">
         <button class="side-btn" type="button" data-nav="hoy"><span data-nav-icon="hoy"></span>Hoy</button>
-        <button class="side-btn" type="button" data-nav="perfil"><span data-nav-icon="perfil"></span>Mi perfil capilar</button>
         <button class="side-btn" type="button" data-nav="inventario"><span data-nav-icon="inventario"></span>Inventario</button>
         <button class="side-btn" type="button" data-nav="rutina"><span data-nav-icon="rutina"></span>Rutina semanal</button>
         <button class="side-btn" type="button" data-nav="ajustes"><span data-nav-icon="ajustes"></span>Ajustes</button>
@@ -372,10 +371,10 @@
         </div>
         <div class="mt-4 flex items-center gap-3 px-2">
           <button id="sideAvatar" class="top-avatar flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#27272a] bg-[#121214] text-sm font-semibold" type="button" data-nav="perfil" aria-label="Abrir mi perfil" title="Mi perfil">C</button>
-          <button class="min-w-0 flex-1 text-left" type="button" data-nav="perfil" aria-label="Abrir mi perfil">
+          <div class="min-w-0 flex-1">
             <p id="sideEmail" class="truncate text-xs muted">Invitado</p>
             <p class="text-[11px] faint">Sesión activa</p>
-          </button>
+          </div>
           <button id="sideSignOut" class="text-xs faint hover:text-white" type="button">Salir</button>
         </div>
       </div>
@@ -692,6 +691,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js?v=15"></script>
+  <script src="./app.js?v=16"></script>
 </body>
 </html>
