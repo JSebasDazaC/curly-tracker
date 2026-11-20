@@ -582,7 +582,10 @@
     lastPull: 0,
     identities: [],
     connectionsFor: null,
-    connectionsLoading: false
+    connectionsLoading: false,
+    pending: false,
+    generation: 0,
+    retryTimer: null
   };
   let lastEnteredUser = null;
 
@@ -1278,10 +1281,14 @@
   }
 
   function renderSyncStatus() {
-    const online = Boolean(syncState.ready);
-    const label = online ? 'Sincronizado' : 'Modo local';
     const cloud = $('#cloudStatus');
     if (!cloud) return;
+    const signedIn = Boolean(syncState.session && syncState.session.user);
+    const online = signedIn && Boolean(syncState.ready);
+    let label = 'Modo local';
+    if (signedIn && syncState.pending) label = 'Sincronizando…';
+    else if (signedIn && online) label = 'Sincronizado';
+    else if (signedIn) label = 'Sin sincronizar';
     cloud.className = `chip ${online ? 'chip-ok' : 'chip-warn'}`;
     cloud.innerHTML = `<span class="badge-dot" data-online="${online}"></span>${label}`;
   }
@@ -1299,9 +1306,12 @@
     const sync = $('#forceSyncBtn');
     if (sync) sync.classList.toggle('hidden', !signedIn);
     const hint = $('#accountHint');
-    if (hint) hint.textContent = signedIn
-      ? 'Tus cambios se sincronizan con tu cuenta.'
-      : 'Estás en modo local. Inicia sesión para sincronizar entre dispositivos.';
+    if (hint) {
+      if (!signedIn) hint.textContent = 'Estás en modo local. Inicia sesión para sincronizar entre dispositivos.';
+      else if (syncState.pending) hint.textContent = 'Sincronizando tus datos con tu cuenta…';
+      else if (syncState.ready) hint.textContent = 'Tus cambios se sincronizan con tu cuenta.';
+      else hint.textContent = 'Tu cuenta está conectada, pero no pudimos sincronizar los datos. Toca «Sincronizar ahora» para reintentar.';
+    }
 
     const nameNode = $('#sideMiniName');
     if (nameNode) nameNode.textContent = displayName();
@@ -1704,42 +1714,56 @@
 
   async function pullCloud(session, options = {}) {
     if (!sb || !session) return false;
+    const generation = options.generation ?? syncState.generation;
+    const isCurrent = () => generation === syncState.generation;
     const userId = session.user.id;
-    const [profileRes, productsRes, toolsRes, logsRes] = await Promise.all([
-      sb.from('user_profile').select('*').eq('user_id', userId).maybeSingle(),
-      sb.from('products').select('*').eq('user_id', userId),
-      sb.from('tools').select('*').eq('user_id', userId),
-      sb.from('schedule_logs').select('*').eq('user_id', userId)
-    ]);
+    syncState.pending = true;
+    renderSyncStatus();
+    renderAccount();
+    try {
+      const [profileRes, productsRes, toolsRes, logsRes] = await Promise.all([
+        sb.from('user_profile').select('*').eq('user_id', userId).maybeSingle(),
+        sb.from('products').select('*').eq('user_id', userId),
+        sb.from('tools').select('*').eq('user_id', userId),
+        sb.from('schedule_logs').select('*').eq('user_id', userId)
+      ]);
+      if (!isCurrent()) return false;
 
-    const failed = [profileRes, productsRes, toolsRes, logsRes].some((result) => result && result.error);
-    if (failed) {
-      setSyncState(false, session);
-      console.warn('Curly Tracker: tablas no disponibles, se usa modo local.', { profileRes, productsRes, toolsRes, logsRes });
-      return false;
+      const failed = [profileRes, productsRes, toolsRes, logsRes].some((result) => result && result.error);
+      if (failed) {
+        setSyncState(false, session);
+        console.warn('Curly Tracker: no se pudieron leer los datos de la nube.', { profileRes, productsRes, toolsRes, logsRes });
+        return false;
+      }
+
+      if (profileRes.data) {
+        const mapped = mapProfile(profileRes.data);
+        state.profile = mapped.profile;
+        state.settings.reminderEnabled = mapped.reminder_enabled;
+        state.settings.reminderTime = mapped.reminder_time;
+      }
+      state.products = (productsRes.data || []).map(mapProduct);
+      state.tools = mergeTools(toolsRes.data || []);
+      const remoteLogs = {};
+      (logsRes.data || []).forEach((row) => { remoteLogs[row.log_date] = mapLog(row); });
+      state.logs = remoteLogs;
+
+      saveLocal();
+      syncState.lastPull = Date.now();
+      setSyncState(true, session);
+      renderAll();
+
+      const hasRemote = Boolean(profileRes.data || productsRes.data?.length || toolsRes.data?.length || logsRes.data?.length);
+      if (!hasRemote) await pushCloud(false);
+      else if (options.toast) toast('Datos actualizados desde la nube');
+      return syncState.ready;
+    } finally {
+      if (isCurrent()) {
+        syncState.pending = false;
+        renderSyncStatus();
+        renderAccount();
+      }
     }
-
-    if (profileRes.data) {
-      const mapped = mapProfile(profileRes.data);
-      state.profile = mapped.profile;
-      state.settings.reminderEnabled = mapped.reminder_enabled;
-      state.settings.reminderTime = mapped.reminder_time;
-    }
-    state.products = (productsRes.data || []).map(mapProduct);
-    state.tools = mergeTools(toolsRes.data || []);
-    const remoteLogs = {};
-    (logsRes.data || []).forEach((row) => { remoteLogs[row.log_date] = mapLog(row); });
-    state.logs = remoteLogs;
-
-    saveLocal();
-    syncState.lastPull = Date.now();
-    setSyncState(true, session);
-    renderAll();
-
-    const hasRemote = Boolean(profileRes.data || productsRes.data?.length || toolsRes.data?.length || logsRes.data?.length);
-    if (!hasRemote) await pushCloud(false);
-    else if (options.toast) toast('Datos actualizados desde la nube');
-    return true;
   }
 
   function scheduleRemotePull(session) {
@@ -1792,7 +1816,12 @@
 
   async function pushCloud(showToast) {
     if (!sb || !syncState.session || !syncState.ready || syncState.syncing) return;
+    const generation = syncState.generation;
+    const isCurrent = () => generation === syncState.generation;
     syncState.syncing = true;
+    syncState.pending = true;
+    renderSyncStatus();
+    renderAccount();
     const userId = syncState.session.user.id;
     try {
       const profilePayload = {
@@ -1882,10 +1911,12 @@
         if (result.error) throw result.error;
       }
 
+      if (!isCurrent()) return;
       setSyncState(true, syncState.session);
       syncState.errorShown = false;
       if (showToast) toast('Datos sincronizados');
     } catch (error) {
+      if (!isCurrent()) return;
       console.warn('Curly Tracker: sincronización no disponible.', error);
       setSyncState(false, syncState.session);
       if (!syncState.errorShown) {
@@ -1894,6 +1925,11 @@
       }
     } finally {
       syncState.syncing = false;
+      if (isCurrent()) {
+        syncState.pending = false;
+        renderSyncStatus();
+        renderAccount();
+      }
     }
   }
 
@@ -2386,10 +2422,21 @@
     showApp();
     const userId = session && session.user && session.user.id;
     if (lastEnteredUser === userId && syncState.ready && !forceProfileSetup) return;
+    const generation = ++syncState.generation;
+    clearTimeout(syncState.retryTimer);
     lastEnteredUser = userId;
     setSyncState(false, session);
-    await pullCloud(session);
+    await pullCloud(session, { generation });
+    if (generation !== syncState.generation) return;
+    if (!syncState.ready) {
+      syncState.retryTimer = setTimeout(() => {
+        if (generation === syncState.generation && syncState.session) {
+          pullCloud(syncState.session, { generation }).catch(() => {});
+        }
+      }, 2000);
+    }
     const completed = await applyAuthMetadata(session);
+    if (generation !== syncState.generation) return;
     renderAll();
     if (syncState.ready) subscribeRealtime(session);
     if (forceProfileSetup || (!completed && !state.profile.username)) {
@@ -2420,6 +2467,8 @@
         if (hasReturnTab()) restoreReturnTab();
       } else if (event === 'SIGNED_OUT') {
         unsubscribeRealtime();
+        syncState.generation += 1;
+        clearTimeout(syncState.retryTimer);
         syncState.ready = false;
         lastEnteredUser = null;
         showLogin();
@@ -2436,7 +2485,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=22');
+        await navigator.serviceWorker.register('./sw.js?v=23');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
@@ -2767,18 +2816,30 @@
 
     $('#forceSyncBtn').addEventListener('click', async () => {
       if (!syncState.session) { toast('Inicia sesión para sincronizar'); return; }
-      if (!syncState.ready) {
-        await pushCloud(true);
-        if (syncState.ready) subscribeRealtime(syncState.session);
-        return;
+      const button = $('#forceSyncBtn');
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Sincronizando…';
+      try {
+        const ok = await pullCloud(syncState.session);
+        if (ok) {
+          subscribeRealtime(syncState.session);
+          await pushCloud(false);
+          toast('Datos sincronizados');
+        } else {
+          toast('No se pudo sincronizar. Revisa tu conexión e inténtalo de nuevo.');
+        }
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
       }
-      await pullCloud(syncState.session, { toast: true });
-      subscribeRealtime(syncState.session);
     });
 
     $('#signOutBtn').addEventListener('click', async () => {
       if (sb) await sb.auth.signOut();
       unsubscribeRealtime();
+      syncState.generation += 1;
+      clearTimeout(syncState.retryTimer);
       syncState.ready = false;
       lastEnteredUser = null;
       showLogin();
@@ -2820,6 +2881,9 @@
       persist();
       renderAll();
       if (user) {
+        unsubscribeRealtime();
+        syncState.generation += 1;
+        clearTimeout(syncState.retryTimer);
         syncState.ready = false;
         lastEnteredUser = null;
         showLogin();
@@ -2915,6 +2979,9 @@
     });
 
     $('#localModeBtn').addEventListener('click', () => {
+      unsubscribeRealtime();
+      syncState.generation += 1;
+      clearTimeout(syncState.retryTimer);
       lastEnteredUser = null;
       showApp();
       setSyncState(false, null);
