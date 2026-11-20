@@ -21,8 +21,8 @@
     * { -webkit-tap-highlight-color: transparent; }
     html { scroll-behavior: smooth; }
     body { font-family: 'Outfit', sans-serif; background: #09090b; color: #fafafa; letter-spacing: -0.01em; }
-    /* El atributo hidden debe ganar siempre, incluso sobre utilidades responsive de Tailwind (lg:grid). */
-    [hidden] { display: none !important; }
+    /* Oculta de verdad el atributo hidden y la clase hidden en botones: .btn-* fijan display: inline-flex. */
+    [hidden], button.hidden { display: none !important; }
     ::selection { background: #fafafa; color: #09090b; }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #09090b; }
@@ -658,6 +658,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="./supabase.js?v=32"></script>
-  <script src="./app.js?v=34"></script>
+  <script src="./app.js?v=35"></script>
 </body>
 </html>
