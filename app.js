@@ -1779,10 +1779,10 @@
     showAuthPanel('sent');
     $('#linkSentTarget').textContent = maskEmail(email);
     $('#otpFields').hidden = false;
-    $('#authOtpCode').value = '';
+    clearOtpInput();
     $('#linkSentError').textContent = '';
     $('#linkSentError').classList.add('hidden');
-    setTimeout(() => $('#authOtpCode').focus(), 0);
+    setTimeout(focusOtpFirst, 0);
   }
 
   async function sendEmailCode() {
@@ -1820,6 +1820,76 @@
     if (!node) return;
     node.textContent = message || '';
     node.classList.toggle('hidden', !message);
+  }
+
+  function otpBoxes() {
+    return $$('.otp-box');
+  }
+
+  function syncOtpValue() {
+    const boxes = otpBoxes();
+    boxes.forEach((box) => { box.dataset.filled = String(Boolean(box.value)); });
+    const value = boxes.map((box) => box.value).join('');
+    $('#authOtpCode').value = value;
+    return value;
+  }
+
+  function clearOtpInput() {
+    otpBoxes().forEach((box) => {
+      box.value = '';
+      box.dataset.filled = 'false';
+    });
+    $('#authOtpCode').value = '';
+  }
+
+  function focusOtpFirst() {
+    const first = otpBoxes()[0];
+    if (first) first.focus();
+  }
+
+  function setupOtpInput() {
+    const boxes = otpBoxes();
+    boxes.forEach((box, index) => {
+      box.addEventListener('input', () => {
+        const digit = box.value.replace(/\D/g, '').slice(-1);
+        box.value = digit;
+        box.dataset.filled = String(Boolean(digit));
+        syncOtpValue();
+        setOtpError('');
+        if (digit && index < boxes.length - 1) boxes[index + 1].focus();
+      });
+      box.addEventListener('keydown', (event) => {
+        if (event.key === 'Backspace' && !box.value && index > 0) {
+          event.preventDefault();
+          boxes[index - 1].value = '';
+          boxes[index - 1].dataset.filled = 'false';
+          syncOtpValue();
+          boxes[index - 1].focus();
+        } else if (event.key === 'Enter' && !$('#authVerifyBtn').disabled) {
+          event.preventDefault();
+          verifyEmailCode();
+        } else if (event.key === 'ArrowLeft' && index > 0) {
+          event.preventDefault();
+          boxes[index - 1].focus();
+        } else if (event.key === 'ArrowRight' && index < boxes.length - 1) {
+          event.preventDefault();
+          boxes[index + 1].focus();
+        }
+      });
+      box.addEventListener('paste', (event) => {
+        const text = (event.clipboardData || window.clipboardData).getData('text') || '';
+        const digits = text.replace(/\D/g, '').slice(0, boxes.length);
+        if (!digits) return;
+        event.preventDefault();
+        boxes.forEach((target, i) => {
+          target.value = digits[i] || '';
+          target.dataset.filled = String(Boolean(target.value));
+        });
+        syncOtpValue();
+        setOtpError('');
+        boxes[Math.min(digits.length, boxes.length - 1)].focus();
+      });
+    });
   }
 
   async function verifyEmailCode() {
@@ -2140,7 +2210,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=12');
+        await navigator.serviceWorker.register('./sw.js?v=13');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
@@ -2538,24 +2608,14 @@
       try { sessionStorage.removeItem(PENDING_SIGNUP_KEY); } catch (error) { /* sin sesión */ }
       $('#authIdentifier').value = '';
       $('#otpFields').hidden = true;
-      $('#authOtpCode').value = '';
+      clearOtpInput();
       setOtpError('');
       setAuthError('');
       renderAuthForm();
     };
 
     $('#authVerifyBtn').addEventListener('click', verifyEmailCode);
-    $('#authOtpCode').addEventListener('input', (event) => {
-      const input = event.currentTarget;
-      input.value = input.value.replace(/\D/g, '').slice(0, 10);
-      setOtpError('');
-    });
-    $('#authOtpCode').addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' && !$('#authVerifyBtn').disabled) {
-        event.preventDefault();
-        verifyEmailCode();
-      }
-    });
+    setupOtpInput();
 
     $('#changeEmailBtn').addEventListener('click', () => { backToIdentify(); $('#authIdentifier').focus(); });
     $('#authCallbackBackBtn').addEventListener('click', backToIdentify);
