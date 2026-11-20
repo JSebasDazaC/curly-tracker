@@ -54,9 +54,9 @@
   ];
 
   const LINK_PROVIDERS = [
-    { id: 'google', label: 'Google', mark: 'G' },
-    { id: 'azure', label: 'Microsoft', mark: 'M' },
-    { id: 'facebook', label: 'Facebook', mark: 'f' }
+    { id: 'google', label: 'Google' },
+    { id: 'azure', label: 'Microsoft' },
+    { id: 'facebook', label: 'Facebook' }
   ];
 
   const SYNC_RETRY_MS = 8000;
@@ -154,12 +154,6 @@
   function statusMeta(status) {
     const index = Math.max(0, STATUSES.indexOf(status));
     return STATUS_META[index] || STATUS_META[0];
-  }
-
-  function providerMark(id) {
-    if (id === 'azure') return '<span class="provider-mark provider-mark-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
-    const glyph = id === 'facebook' ? 'f' : 'G';
-    return `<span class="provider-mark" aria-hidden="true">${glyph}</span>`;
   }
 
   function curlMark(cls = 'h-6 w-6') {
@@ -369,12 +363,30 @@
     });
   }
 
+  function clockParts(value) {
+    const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || ''));
+    const hour = match ? Number(match[1]) : 8;
+    const minute = match ? match[2] : '00';
+    return {
+      hour24: hour,
+      hour12: String(hour % 12 || 12),
+      minute,
+      period: hour >= 12 ? 'PM' : 'AM'
+    };
+  }
+
+  function formatClock12(value) {
+    if (!/^\d{1,2}:\d{2}$/.test(String(value || ''))) return '--:--';
+    const parts = clockParts(value);
+    return `${parts.hour12}:${parts.minute} ${parts.period}`;
+  }
+
   function syncPicker(input) {
     const wrapper = input.closest('.custom-picker');
     if (!wrapper) return;
     const valueNode = $('.picker-value', wrapper);
     if (input.type === 'time') {
-      if (valueNode) valueNode.textContent = input.value || '--:--';
+      if (valueNode) valueNode.textContent = input.value ? formatClock12(input.value) : '--:--';
       renderTimePicker(wrapper, input);
       return;
     }
@@ -388,20 +400,20 @@
   function renderTimePicker(wrapper, input) {
     const menu = $('.picker-menu', wrapper);
     if (!menu) return;
-    const current = /^(\d{2}):(\d{2})$/.test(input.value) ? input.value.split(':') : ['08', '00'];
-    const hours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'));
+    const current = clockParts(input.value);
+    const hours = Array.from({ length: 12 }, (_, index) => String(index + 1));
     const minutes = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, '0'));
-    if (!minutes.includes(current[1])) {
-      minutes.push(current[1]);
+    if (!minutes.includes(current.minute)) {
+      minutes.push(current.minute);
       minutes.sort();
     }
     const column = (title, values, selected, part) => `<div class="picker-column">
       <p class="picker-column-title">${title}</p>
       ${values.map((value) => `<button type="button" class="picker-option" data-picker-part="${part}" data-value="${value}" aria-selected="${value === selected}">${value}</button>`).join('')}
     </div>`;
-    menu.innerHTML = `<div class="picker-columns">${column('Hora', hours, current[0], 'hour')}${column('Min', minutes, current[1], 'minute')}</div>
+    menu.innerHTML = `<div class="picker-columns picker-columns-time">${column('Hora', hours, current.hour12, 'hour')}${column('Min', minutes, current.minute, 'minute')}${column('Formato', ['AM', 'PM'], current.period, 'period')}</div>
       <div class="mt-3 flex flex-wrap gap-1.5 border-t border-[#27272a] pt-3">
-        ${['07:00', '08:00', '09:00', '12:00', '20:00', '22:00'].map((time) => `<button type="button" class="picker-preset" data-picker-preset="${time}">${time}</button>`).join('')}
+        ${['07:00', '08:00', '09:00', '12:00', '20:00', '22:00'].map((time) => `<button type="button" class="picker-preset" data-picker-preset="${time}">${formatClock12(time)}</button>`).join('')}
       </div>`;
   }
 
@@ -1216,8 +1228,10 @@
       const isToday = key === todayKey;
       return { date, key, plan, log, isToday };
     });
+    const todayIndex = mondayIndex(new Date());
+    const orderedDays = [days[todayIndex], ...days.slice(todayIndex + 1), ...days.slice(0, todayIndex)];
 
-    $('#weekStrip').innerHTML = days.map((day) => `
+    $('#weekStrip').innerHTML = orderedDays.map((day) => `
       <button class="min-w-[92px] flex-1 rounded-xl border p-3 text-left transition ${day.isToday ? 'border-[#fafafa] bg-[#18181b]' : 'border-[#27272a] bg-[#121214] hover:border-[#3f3f46]'}" type="button" data-jump-day="${day.key}">
         <span class="block text-[10px] uppercase tracking-wider ${day.isToday ? 'text-[#fafafa]' : 'faint'}">${esc(DAY_NAMES[day.plan.day].slice(0, 3))}</span>
         <span class="mt-1 block text-lg font-semibold">${day.date.getDate()}</span>
@@ -1226,7 +1240,7 @@
           : `<span class="mt-1 flex items-center gap-1 text-[10px] ${day.log.completed ? 'text-[#fafafa]' : 'faint'}">${icon(day.log.completed ? 'check' : 'calendar', 'h-3 w-3')}${day.log.completed ? 'Hecho' : `${day.plan.steps.length} pasos`}</span>`}
       </button>`).join('');
 
-    $('#routineList').innerHTML = days.map((day) => {
+    $('#routineList').innerHTML = orderedDays.map((day) => {
       const steps = day.plan.steps.map((step, index) => {
         const names = stepProductNames(step);
         const tools = (step.tools || []).filter((tool) => ownsTool(tool));
@@ -1274,7 +1288,7 @@
       </article>`;
     }).join('');
 
-    $('#routineNote').innerHTML = `${icon('spark', 'mr-1 inline h-3.5 w-3.5')}El horario se recalcula al cambiar tu perfil o al marcar productos y herramientas como disponibles. Las sugerencias solo proponen lo que falta; nunca se incluyen en los pasos.`;
+    $('#routineNote').innerHTML = `${icon('spark', 'mr-1 inline h-3.5 w-3.5')}Hoy aparece primero en la fila y en la lista. El horario se recalcula al cambiar tu perfil o al marcar productos y herramientas como disponibles. Las sugerencias solo proponen lo que falta; nunca se incluyen en los pasos.`;
   }
 
   /* ---------------- Render: Ajustes ---------------- */
@@ -1375,12 +1389,9 @@
         ? `<button class="btn-ghost btn-mini shrink-0" type="button" data-unlink-provider="${provider.id}" ${canUnlink ? '' : 'disabled title="Debe conservar al menos un acceso"'}>Desvincular</button>`
         : `<button class="btn-ghost btn-mini shrink-0" type="button" data-link-provider="${provider.id}">Vincular</button>`;
       return `<div class="flex items-center justify-between gap-3 py-3">
-        <div class="flex min-w-0 items-center gap-3">
-          <span class="shrink-0">${providerMark(provider.id)}</span>
-          <div class="min-w-0">
-            <p class="truncate text-sm font-medium">${provider.label}</p>
-            <p class="mt-0.5 text-[11px] faint">${isLinked ? 'Vinculado' : 'No vinculado'}</p>
-          </div>
+        <div class="min-w-0">
+          <p class="truncate text-sm font-medium">${provider.label}</p>
+          <p class="mt-0.5 text-[11px] faint">${isLinked ? 'Vinculado' : 'No vinculado'}</p>
         </div>
         ${action}
       </div>`;
@@ -2554,7 +2565,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=25');
+        await navigator.serviceWorker.register('./sw.js?v=26');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
@@ -2647,11 +2658,19 @@
       const wrapper = pickerPart.closest('.custom-picker');
       const input = wrapper && $('input', wrapper);
       if (input) {
-        const parts = String(input.value || '08:00').split(':');
-        const value = pickerPart.dataset.pickerPart === 'hour'
-          ? `${pickerPart.dataset.value}:${parts[1] || '00'}`
-          : `${parts[0] || '08'}:${pickerPart.dataset.value}`;
-        setPickerValue(input, value, false);
+        const parts = clockParts(input.value);
+        const chosen = pickerPart.dataset.value;
+        let hour = parts.hour24;
+        let minute = parts.minute;
+        if (pickerPart.dataset.pickerPart === 'hour') {
+          const hour12 = Number(chosen);
+          hour = (hour12 % 12) + (hour >= 12 ? 12 : 0);
+        } else if (pickerPart.dataset.pickerPart === 'minute') {
+          minute = chosen;
+        } else if (pickerPart.dataset.pickerPart === 'period') {
+          hour = chosen === 'PM' ? (hour % 12) + 12 : hour % 12;
+        }
+        setPickerValue(input, `${String(hour).padStart(2, '0')}:${minute}`, false);
       }
       return;
     }
