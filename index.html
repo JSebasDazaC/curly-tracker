@@ -236,7 +236,7 @@
       <div class="surface p-6 sm:p-8">
         <div id="authMainPanel">
         <h2 id="authTitle" class="text-xl font-semibold">Bienvenido de nuevo</h2>
-        <p id="authSubtitle" class="mt-1.5 text-sm muted">Entra con tu correo, teléfono o red social.</p>
+        <p id="authSubtitle" class="mt-1.5 text-sm muted">Entra con tu correo o red social.</p>
 
         <div class="oauth-list">
           <button id="googleBtn" class="btn-ghost w-full" type="button">
@@ -265,21 +265,15 @@
 
         <div class="my-6 flex items-center gap-3">
           <span class="h-px flex-1 bg-[#27272a]"></span>
-          <span class="text-[11px] uppercase tracking-[.18em] text-[#71717a]">o con correo o teléfono</span>
+          <span class="text-[11px] uppercase tracking-[.18em] text-[#71717a]">o con correo</span>
           <span class="h-px flex-1 bg-[#27272a]"></span>
         </div>
 
         <form id="authForm" novalidate>
           <div id="identifierFields">
-            <label class="label" for="authIdentifier">Correo o teléfono</label>
-            <input class="field" id="authIdentifier" type="text" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="tu@email.com o +57 300 123 4567" />
-            <p id="authIdentifierHint" class="mt-1.5 text-xs faint">Escribe un correo o un teléfono con código de país. Lo detectaremos solos.</p>
-          </div>
-
-          <div id="verifyFields" class="hidden">
-            <label class="label" for="authCode">Código SMS</label>
-            <input class="field" id="authCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="6" />
-            <button id="changeIdentifierBtn" class="mt-2 text-xs muted underline-offset-4 hover:text-white hover:underline" type="button">Usar otro correo o teléfono</button>
+            <label class="label" for="authIdentifier">Correo electrónico</label>
+            <input class="field" id="authIdentifier" type="email" autocomplete="email" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="tu@email.com" />
+            <p id="authIdentifierHint" class="mt-1.5 text-xs faint">Escribe tu correo electrónico. Te enviaremos un enlace de verificación.</p>
           </div>
 
           <button id="authSubmit" class="btn-primary mt-6 w-full" type="submit">Entrar</button>
@@ -302,7 +296,7 @@
           <p id="linkSentTarget" class="mt-4 text-sm text-[#fafafa]"></p>
           <div class="mt-6 flex flex-col gap-2">
             <button id="reenviarLinkBtn" class="btn-primary w-full" type="button">Reenviar enlace</button>
-            <button id="changeEmailBtn" class="btn-ghost w-full" type="button">Usar otro correo o teléfono</button>
+            <button id="changeEmailBtn" class="btn-ghost w-full" type="button">Usar otro correo</button>
           </div>
           <p id="linkSentError" class="mt-4 hidden text-sm text-[#d4d4d8]"></p>
         </div>
@@ -441,13 +435,6 @@
                       <option value="wide">Espaciado y ligero</option>
                       <option value="script">Manuscrita</option>
                     </select>
-                  </div>
-                  <div>
-                    <span class="label">Teléfono vinculado</span>
-                    <div class="flex h-[45px] items-center justify-between gap-2 rounded-xl border border-[#27272a] bg-[#09090b] px-3">
-                      <span id="profilePhone" class="truncate text-sm muted">Sin vincular</span>
-                      <button id="linkPhoneBtn" class="shrink-0 text-xs text-[#a1a1aa] underline-offset-4 hover:text-white hover:underline" type="button">Vincular</button>
-                    </div>
                   </div>
                 </div>
                 <div class="mt-4">

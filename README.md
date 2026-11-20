@@ -7,8 +7,8 @@ PWA monocromática para el control capilar masculino: perfil de rizo, inventario
 - **Estética**: Tailwind CSS vía CDN, fuente `Outfit` (Google Fonts) y paleta estrictamente monocromática (`#09090b`, `#121214`, `#27272a`, `#a1a1aa`, `#fafafa`). Desplegables personalizados con menú propio (teclado incluido) para perfil, categorías, estado, **hora del recordatorio y fecha del registro**; navegación inferior flotante en móvil y barra lateral en escritorio.
 - **PWA**: `manifest.json` con `display: standalone`, tema `#09090b` e ícono SVG minimalista; `sw.js` con caché offline básica, recordatorios y manejo de `push`/`notificationclick`.
 - **Notificaciones**: permiso con `Notification.requestPermission()`, hora configurable, aviso diario basado en el plan del día y notificación de prueba.
-- **Autenticación**: Google, Microsoft (Azure) y Facebook OAuth; acceso sin contraseña con **un solo campo que reconoce correo o teléfono**: por correo envía un **enlace de verificación**, por teléfono un código SMS; sesión local sin cuenta. Todo con Supabase (`@supabase/supabase-js` vía CDN). En registro, los datos de perfil se piden **después** de verificar el correo o el teléfono. Si el enlace falla o caduca, se muestra una pantalla limpia en español para volver a solicitarlo.
-- **Perfil social**: nombre, apellido, **usuario único**, nombre a mostrar independiente, estilo de tipografía, biografía, foto de perfil, banner y teléfono vinculado. El usuario se valida en tiempo real y se protege con un índice único en minúsculas.
+- **Autenticación**: Google, Microsoft (Azure) y Facebook OAuth; acceso sin contraseña con **un solo campo de correo electrónico** que envía un **enlace de verificación**; sesión local sin cuenta. Todo con Supabase (`@supabase/supabase-js` vía CDN). En registro, los datos de perfil se piden **después** de verificar el correo. Si el enlace falla o caduca, se muestra una pantalla limpia en español para volver a solicitarlo.
+- **Perfil social**: nombre, apellido, **usuario único**, nombre a mostrar independiente, estilo de tipografía, biografía, foto de perfil y banner. El usuario se valida en tiempo real y se protege con un índice único en minúsculas.
 - **Sincronización**: `user_profile`, `products`, `tools` y `schedule_logs` con RLS por `auth.uid()`. Los cambios hechos en cualquier dispositivo se suben y se reciben en los demás mediante **Supabase Realtime**; al volver del segundo plano también se refresca automáticamente. Las imágenes se guardan en el bucket público `avatars` de Supabase Storage. Si las tablas aún no existen o no hay sesión, la app sigue funcionando en **modo local** (localStorage).
 - **Módulos**:
   1. Perfil social y capilar (identidad personalizable + patrón 2C–4A, porosidad, grosor y objetivo).
@@ -19,7 +19,7 @@ PWA monocromática para el control capilar masculino: perfil de rizo, inventario
 
 1. Abre esta carpeta en VS Code.
 2. Inicia **Live Server** sobre `index.html` (o sirve la carpeta con cualquier servidor estático).
-3. Pulsa **Continuar sin cuenta (modo local)** para probar sin backend, o entra con Google, Microsoft, Facebook, o escribe tu correo o teléfono en el campo único: abre el enlace que recibas en el correo o introduce el código SMS.
+3. Pulsa **Continuar sin cuenta (modo local)** para probar sin backend, o entra con Google, Microsoft, Facebook, o escribe tu correo electrónico y abre el enlace que recibas.
 
 > Los Service Workers requieren `http://localhost` o HTTPS. `file://` no los registra.
 
@@ -29,10 +29,9 @@ PWA monocromática para el control capilar masculino: perfil de rizo, inventario
 2. Ve a **SQL Editor → New query**, pega todo `schema.sql` y pulsa **Run**. Es idempotente: crea/actualiza las columnas del perfil social, el índice único de usuario, la función `username_available`, las cuatro tablas, RLS, su inclusión en `supabase_realtime` y el bucket `avatars` con sus políticas de Storage.
 3. Activa los proveedores que quieras usar en **Authentication → Providers**: **Google**, **Azure** (se muestra como Microsoft en la app) y **Facebook**. Cada uno necesita su propio Client ID/Secret y la *Redirect URL* de Supabase.
 4. Activa el envío de correo (**Magic Link / Email OTP**) en **Authentication → Providers → Email**. La app envía un enlace de verificación con un botón; al pulsarlo se activa la cuenta. Asegúrate de que la plantilla de correo no mencione códigos de terceros: el mensaje que muestra la app es «Te enviamos un enlace de verificación a tu correo. Haz clic en el botón del mensaje para activar tu cuenta».
-5. Para entrar por teléfono, configura un proveedor SMS en **Authentication → Providers → Phone** (Twilio, MessageBird, Vonage, etc.). Sin ese paso el campo de teléfono mostrará el error del proveedor.
-6. En **Authentication → URL Configuration**, añade la URL de tu despliegue (y `http://localhost:5500` para Live Server; ajusta el puerto) a *Site URL* y *Redirect URLs*.
-7. Recarga la app e inicia sesión. En **Crear cuenta** verás primero el campo único y, tras abrir el enlace de verificación (o introducir el código SMS), se abrirá el formulario con usuario, nombre a mostrar, estilo y biografía. Después podrás editar todo desde **Mi perfil**. Los datos locales se suben automáticamente.
-8. Si ya tenías la PWA instalada, ciérrala y ábrela de nuevo para que descargue la versión nueva (el Service Worker se actualiza solo).
+5. En **Authentication → URL Configuration**, añade la URL de tu despliegue (y `http://localhost:5500` para Live Server; ajusta el puerto) a *Site URL* y *Redirect URLs*.
+6. Recarga la app e inicia sesión. En **Crear cuenta** verás primero el campo de correo y, tras abrir el enlace de verificación, se abrirá el formulario con usuario, nombre a mostrar, estilo y biografía. Después podrás editar todo desde **Mi perfil**. Los datos locales se suben automáticamente.
+7. Si ya tenías la PWA instalada, ciérrala y ábrela de nuevo para que descargue la versión nueva (el Service Worker se actualiza solo).
 
 Las credenciales (URL y clave publishable) ya están configuradas en `app.js`. Son públicas por diseño; la seguridad de los datos la garantizan las políticas RLS de `schema.sql`.
 
@@ -80,7 +79,7 @@ curly-tracker/
 
 ## Uso rápido
 
-- En **Mi perfil** personaliza usuario, nombre a mostrar, tipografía, biografía, foto, banner y teléfono; el cambio se sincroniza solo.
+- En **Mi perfil** personaliza usuario, nombre a mostrar, tipografía, biografía, foto y banner; el cambio se sincroniza solo.
 - Toca el estado de un producto para ciclar entre *En uso → Por acabarse → No lo tengo*.
 - Marca herramientas para que pasen a formar parte de los pasos de la rutina.
 - El horario nunca incluye productos que no tienes; cuando falta algo relevante aparece una sugerencia discreta.

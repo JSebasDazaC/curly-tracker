@@ -26,7 +26,9 @@ alter table public.user_profile add column if not exists display_style text not 
 alter table public.user_profile add column if not exists bio text not null default '';
 alter table public.user_profile add column if not exists avatar_url text not null default '';
 alter table public.user_profile add column if not exists banner_url text not null default '';
-alter table public.user_profile add column if not exists phone text not null default '';
+
+-- La app no usa teléfono: se elimina el campo legacy si existiera.
+alter table public.user_profile drop column if exists phone;
 
 -- El usuario se compara en minúsculas y los valores vacíos no cuentan como "ocupados".
 create unique index if not exists user_profile_username_key

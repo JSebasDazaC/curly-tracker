@@ -98,8 +98,7 @@
     calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>',
     star: '<path d="m12 3 2.9 5.9 6.5 1-4.7 4.6 1.1 6.5L12 18l-5.8 3 1.1-6.5L2.6 9.9l6.5-1Z"/>',
     lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
-    download: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 19h16"/>',
-    phone: '<path d="M6.6 3h3l1.5 4-2 1.4a12 12 0 0 0 5.5 5.5l1.4-2 4 1.5v3a2 2 0 0 1-2.2 2A17 17 0 0 1 4.6 5.2 2 2 0 0 1 6.6 3Z"/>'
+    download: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 19h16"/>'
   };
 
   function icon(name, cls = 'h-5 w-5') {
@@ -423,8 +422,7 @@
       display_style: pick(source.display_style, DISPLAY_STYLES, 'normal'),
       bio: String(source.bio || '').slice(0, 160),
       avatar_url: String(source.avatar_url || '').slice(0, 2000),
-      banner_url: String(source.banner_url || '').slice(0, 2000),
-      phone: String(source.phone || '').slice(0, 30)
+      banner_url: String(source.banner_url || '').slice(0, 2000)
     };
   }
 
@@ -513,10 +511,8 @@
   let authMode = 'login';
   let authStep = 'identify';
   let pendingIdentifier = '';
-  let pendingKind = 'email';
   let forceProfileSetup = false;
   let authCallbackError = false;
-  let pendingLinkPhone = '';
   const PENDING_PROFILE_KEY = 'curly-pending-profile';
   const PENDING_SIGNUP_KEY = 'curly-pending-signup';
   let syncState = {
@@ -918,10 +914,8 @@
     const avatarStyle = p.avatar_url ? ` style="background-image:url('${esc(p.avatar_url)}')"` : '';
     const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
     const email = syncState.session && syncState.session.user ? syncState.session.user.email : '';
-    const phone = p.phone || (syncState.session && syncState.session.user ? syncState.session.user.phone : '');
     const chips = [
       p.username ? `<span class="chip">@${esc(p.username)}</span>` : '',
-      phone ? `<span class="chip">${icon('phone', 'h-3.5 w-3.5')}${esc(phone)}</span>` : '',
       email ? `<span class="chip">${esc(email)}</span>` : ''
     ].filter(Boolean).join('');
 
@@ -953,10 +947,6 @@
     $('#profileGoal').value = profile.goal;
     syncAllSelects();
     renderProfileHero();
-
-    const phone = profile.phone || (syncState.session && syncState.session.user ? syncState.session.user.phone : '');
-    $('#profilePhone').textContent = phone || 'Sin vincular';
-    $('#linkPhoneBtn').textContent = phone ? 'Cambiar' : 'Vincular';
 
     const avatarPreview = $('#avatarPreview');
     avatarPreview.style.backgroundImage = profile.avatar_url ? `url('${esc(profile.avatar_url)}')` : '';
@@ -1557,7 +1547,6 @@
         bio: state.profile.bio,
         avatar_url: state.profile.avatar_url,
         banner_url: state.profile.banner_url,
-        phone: state.profile.phone || syncState.session.user.phone || '',
         reminder_enabled: state.settings.reminderEnabled,
         reminder_time: state.settings.reminderTime
       };
@@ -1674,57 +1663,32 @@
     try { sessionStorage.removeItem(PENDING_PROFILE_KEY); } catch (error) { /* sin sesión */ }
   }
 
-  function detectIdentifier(raw) {
-    const value = String(raw || '').trim();
-    if (!value) return { kind: '', value: '', invalid: false };
-    // Cualquier letra (o una @) significa correo, incluso si todavía está incompleto.
-    // Así el teclado no salta a numérico mientras se escribe la primera parte del email.
-    if (value.includes('@') || /[a-z]/i.test(value)) {
-      const email = value.toLowerCase();
-      const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      return { kind: 'email', value: email, invalid: !valid };
-    }
-    const digits = value.replace(/\D/g, '');
-    if (digits.length >= 8) return { kind: 'phone', value: `+${digits}`, invalid: false };
-    return { kind: 'phone', value, invalid: true };
+  function normalizeEmail(raw) {
+    return String(raw || '').trim().toLowerCase();
   }
 
-  function maskIdentifier(kind, value) {
-    if (kind === 'email') {
-      const [name, domain = ''] = String(value || '').split('@');
-      return `${name.slice(0, 2)}***@${domain}`;
-    }
-    const digits = String(value || '').replace(/\D/g, '');
-    return `+*** ${digits.slice(-4)}`;
+  const validEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || ''));
+
+  function maskEmail(value) {
+    const [name, domain = ''] = String(value || '').split('@');
+    return `${name.slice(0, 2)}***@${domain}`;
   }
 
   function updateIdentifierHint() {
     const node = $('#authIdentifierHint');
     if (!node) return;
-    const raw = $('#authIdentifier').value;
-    const detected = detectIdentifier(raw);
-    const input = $('#authIdentifier');
-    // Solo pedir teclado numérico cuando el texto ya es claramente un teléfono.
-    const looksLikePhone = detected.kind === 'phone' && !/[a-z]/i.test(raw) && raw.replace(/\D/g, '').length >= 6;
-    const mode = looksLikePhone ? 'tel' : 'email';
-    if (input.inputMode !== mode) input.inputMode = mode;
+    const raw = String($('#authIdentifier').value || '').trim();
 
-    if (!detected.value) {
-      node.textContent = 'Escribe un correo o un teléfono con código de país. Lo detectaremos solos.';
+    if (!raw) {
+      node.textContent = 'Escribe tu correo electrónico. Te enviaremos un enlace de verificación.';
       node.className = 'mt-1.5 text-xs faint';
-    } else if (detected.kind === 'email' && detected.invalid) {
-      node.textContent = detected.value.includes('@')
+    } else if (!validEmail(raw)) {
+      node.textContent = raw.includes('@')
         ? 'Sigue escribiendo: añade el dominio (ej. @gmail.com).'
-        : 'Detectado: correo. Añade @ y el dominio para continuar.';
+        : 'Añade @ y el dominio para continuar.';
       node.className = 'mt-1.5 text-xs faint';
-    } else if (detected.kind === 'phone' && detected.invalid) {
-      node.textContent = 'Escribe un teléfono con código de país (mínimo 8 dígitos).';
-      node.className = 'mt-1.5 text-xs faint';
-    } else if (detected.kind === 'email') {
-      node.textContent = 'Detectado: correo electrónico. Te enviaremos un enlace de verificación.';
-      node.className = 'mt-1.5 text-xs hint-ok';
     } else {
-      node.textContent = 'Detectado: teléfono. Te enviaremos un código por SMS.';
+      node.textContent = 'Correo listo. Te enviaremos un enlace de verificación.';
       node.className = 'mt-1.5 text-xs hint-ok';
     }
   }
@@ -1758,28 +1722,16 @@
 
   function renderAuthForm() {
     const signup = authMode === 'signup';
-    const sms = authStep === 'sms';
 
     showAuthPanel('main');
-    $('#identifierFields').classList.toggle('hidden', sms);
-    $('#verifyFields').classList.toggle('hidden', !sms);
-    $('#authIdentifier').disabled = sms;
-    $('#authCode').disabled = !sms;
-    $('#authToggle').classList.toggle('hidden', sms);
-    $('#localModeBtn').classList.toggle('hidden', sms);
-
-    $('#authTitle').textContent = sms
-      ? 'Verifica tu teléfono'
-      : signup ? 'Crear cuenta' : 'Bienvenido de nuevo';
-    $('#authSubtitle').textContent = sms
-      ? `Introduce el código SMS enviado a ${maskIdentifier('phone', pendingIdentifier)}.`
-      : signup
-        ? 'Solo necesitas tu correo o teléfono para empezar.'
-        : 'Entra con tu correo, teléfono o red social.';
+    $('#authTitle').textContent = signup ? 'Crear cuenta' : 'Bienvenido de nuevo';
+    $('#authSubtitle').textContent = signup
+      ? 'Solo necesitas tu correo electrónico para empezar.'
+      : 'Entra con tu correo o red social.';
     $('#authToggle').textContent = signup ? '¿Ya tienes cuenta? Entrar' : '¿No tienes cuenta? Crear cuenta';
-    $('#authSubmit').textContent = sms ? 'Verificar y continuar' : signup ? 'Crear cuenta' : 'Entrar';
+    $('#authSubmit').textContent = signup ? 'Crear cuenta' : 'Entrar';
 
-    if (!sms) updateIdentifierHint();
+    updateIdentifierHint();
   }
 
   async function oauthSignIn(provider, label) {
@@ -1792,69 +1744,40 @@
     if (error) setAuthError(error.message || `No se pudo iniciar con ${label}`);
   }
 
-  function showLinkSentPanel(identifier) {
+  function showLinkSentPanel(email) {
     showAuthPanel('sent');
-    $('#linkSentTarget').textContent = maskIdentifier('email', identifier);
+    $('#linkSentTarget').textContent = maskEmail(email);
     $('#linkSentError').textContent = '';
     $('#linkSentError').classList.add('hidden');
   }
 
-  async function sendCode() {
+  async function sendMagicLink() {
     if (!sb) { setAuthError('Supabase no está disponible. Usa el modo local.'); return false; }
-    const detected = detectIdentifier($('#authIdentifier').value);
-    if (!detected.kind || detected.invalid) {
-      setAuthError('Introduce un correo válido o un teléfono con código de país.');
+    const email = normalizeEmail($('#authIdentifier').value);
+    if (!validEmail(email)) {
+      setAuthError('Introduce un correo electrónico válido.');
       return false;
     }
     setAuthError('');
     clearPendingProfile();
-    pendingKind = detected.kind;
-    pendingIdentifier = detected.value;
+    pendingIdentifier = email;
     forceProfileSetup = authMode === 'signup';
     const options = {
       shouldCreateUser: authMode === 'signup',
       emailRedirectTo: window.location.origin + window.location.pathname
     };
-    const payload = detected.kind === 'email'
-      ? { email: detected.value, options }
-      : { phone: detected.value, options };
-    const { error } = await sb.auth.signInWithOtp(payload);
+    const { error } = await sb.auth.signInWithOtp({ email, options });
     if (error) {
-      setAuthError(error.message || (detected.kind === 'email'
-        ? 'No se pudo enviar el enlace de verificación.'
-        : 'No se pudo enviar el código SMS.'));
+      setAuthError(error.message || 'No se pudo enviar el enlace de verificación.');
       return false;
     }
-    if (detected.kind === 'email') {
-      try {
-        if (authMode === 'signup') sessionStorage.setItem(PENDING_SIGNUP_KEY, '1');
-        else sessionStorage.removeItem(PENDING_SIGNUP_KEY);
-      } catch (error) { /* sin sesión */ }
-      authStep = 'link-sent';
-      showLinkSentPanel(detected.value);
-    } else {
-      authStep = 'sms';
-      renderAuthForm();
-      toast('Código SMS enviado');
-    }
-    return true;
-  }
-
-  async function verifySmsCode() {
-    const token = String($('#authCode').value || '').replace(/\D/g, '').slice(0, 6);
-    if (token.length !== 6) { setAuthError('Introduce el código de 6 dígitos.'); return; }
-    setAuthError('');
     try {
-      const { data, error } = await sb.auth.verifyOtp({ phone: pendingIdentifier, token, type: 'sms' });
-      if (error) throw error;
-      authStep = 'identify';
-      pendingIdentifier = '';
-      pendingKind = 'email';
-      renderAuthForm();
-      await enterWithSession(data.session);
-    } catch (error) {
-      setAuthError(error && error.message ? error.message : 'No se pudo verificar el código.');
-    }
+      if (authMode === 'signup') sessionStorage.setItem(PENDING_SIGNUP_KEY, '1');
+      else sessionStorage.removeItem(PENDING_SIGNUP_KEY);
+    } catch (error) { /* sin sesión */ }
+    authStep = 'link-sent';
+    showLinkSentPanel(email);
+    return true;
   }
 
   function authErrorText(code) {
@@ -1944,8 +1867,7 @@
       last_name: meta.last_name || before.last_name,
       username,
       display_name: meta.display_name || before.display_name || meta.first_name || '',
-      display_style: meta.display_style || before.display_style,
-      phone: user.phone || before.phone || ''
+      display_style: meta.display_style || before.display_style
     }));
     const changed = Object.keys(next).some((key) => next[key] !== before[key]);
     clearPendingProfile();
@@ -1970,7 +1892,6 @@
         <div><label class="label" for="setupDisplayName">Nombre a mostrar</label><input class="field" id="setupDisplayName" maxlength="50" value="${esc(p.display_name)}" placeholder="Como te verán los demás" /></div>
         <div><label class="label" for="setupDisplayStyle">Estilo del nombre</label><select class="field" id="setupDisplayStyle">${DISPLAY_STYLES.map((style) => `<option value="${style}" ${style === p.display_style ? 'selected' : ''}>${esc(style.charAt(0).toUpperCase() + style.slice(1))}</option>`).join('')}</select></div>
         <div><label class="label" for="setupBio">Biografía</label><textarea class="field" id="setupBio" rows="2" maxlength="160" placeholder="Cuéntanos algo sobre ti...">${esc(p.bio)}</textarea></div>
-        <div><label class="label" for="setupPhone">Teléfono</label><input class="field" id="setupPhone" type="tel" autocomplete="tel" maxlength="30" value="${esc(p.phone)}" placeholder="+57 300 123 4567" /></div>
         <div class="flex flex-wrap justify-end gap-2 pt-2">
           <button class="btn-ghost" type="button" data-close-modal>Ahora no</button>
           <button class="btn-primary" type="submit">Guardar perfil</button>
@@ -1989,8 +1910,7 @@
         username,
         display_name: $('#setupDisplayName').value.trim(),
         display_style: $('#setupDisplayStyle').value,
-        bio: $('#setupBio').value.trim(),
-        phone: $('#setupPhone').value.trim()
+        bio: $('#setupBio').value.trim()
       }));
       persist();
       renderAll();
@@ -1998,8 +1918,7 @@
       if (sb && syncState.session) sb.auth.updateUser({ data: {
         first_name: state.profile.first_name, last_name: state.profile.last_name,
         username: state.profile.username, display_name: state.profile.display_name,
-        display_style: state.profile.display_style, bio: state.profile.bio,
-        phone: state.profile.phone
+        display_style: state.profile.display_style, bio: state.profile.bio
       } }).catch(() => {});
       if (syncState.ready) pushCloud(true);
       toast('Perfil guardado');
@@ -2054,59 +1973,6 @@
     renderAll();
     if (syncState.ready) pushCloud(true);
     toast(kind === 'avatar' ? 'Foto eliminada' : 'Banner eliminado');
-  }
-
-  function openPhoneLinkModal() {
-    if (!sb || !syncState.session) { toast('Inicia sesión para vincular tu teléfono'); return; }
-    const current = state.profile.phone || (syncState.session.user && syncState.session.user.phone) || '';
-    openModal(`${modalHeader('Vincular teléfono', 'Te enviaremos un código SMS para confirmarlo.', false)}
-      <form id="linkPhoneForm" class="space-y-4">
-        <div><label class="label" for="linkPhone">Teléfono</label><input class="field" id="linkPhone" type="tel" autocomplete="tel" value="${esc(current)}" placeholder="+57 300 123 4567" /></div>
-        <div id="linkCodeBox" class="hidden"><label class="label" for="linkCode">Código SMS</label><input class="field" id="linkCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" /></div>
-        <p id="linkPhoneStatus" class="hidden text-sm text-[#d4d4d8]"></p>
-        <div class="flex flex-wrap justify-end gap-2 pt-2">
-          <button class="btn-ghost" type="button" data-close-modal>Cancelar</button>
-          <button id="linkPhoneSubmit" class="btn-primary" type="submit">Enviar código</button>
-        </div>
-      </form>`);
-    let step = 'request';
-    const status = $('#linkPhoneStatus');
-    $('#linkPhoneForm').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      status.classList.add('hidden');
-      const submit = $('#linkPhoneSubmit');
-      submit.disabled = true;
-      try {
-        if (step === 'request') {
-          const phone = $('#linkPhone').value.trim();
-          if (phone.replace(/\D/g, '').length < 8) throw new Error('Introduce un teléfono válido con código de país.');
-          const { error } = await sb.auth.updateUser({ phone });
-          if (error) throw error;
-          pendingLinkPhone = phone;
-          step = 'verify';
-          $('#linkCodeBox').classList.remove('hidden');
-          submit.textContent = 'Vincular teléfono';
-          toast('Código SMS enviado');
-        } else {
-          const token = $('#linkCode').value.replace(/\D/g, '').slice(0, 6);
-          if (token.length !== 6) throw new Error('Introduce el código de 6 dígitos.');
-          const { data, error } = await sb.auth.verifyOtp({ phone: pendingLinkPhone, token, type: 'sms' });
-          if (error) throw error;
-          state.profile.phone = pendingLinkPhone;
-          if (data && data.session) setSyncState(syncState.ready, data.session);
-          persist();
-          renderAll();
-          closeModal();
-          if (syncState.ready) pushCloud(true);
-          toast('Teléfono vinculado');
-        }
-      } catch (error) {
-        status.textContent = error && error.message ? error.message : 'No se pudo completar la vinculación.';
-        status.classList.remove('hidden');
-      } finally {
-        submit.disabled = false;
-      }
-    });
   }
 
   async function saveProfileFromInputs() {
@@ -2495,8 +2361,6 @@
     });
     $('#removeAvatarBtn').addEventListener('click', () => removeProfileImage('avatar'));
     $('#removeBannerBtn').addEventListener('click', () => removeProfileImage('banner'));
-    $('#linkPhoneBtn').addEventListener('click', openPhoneLinkModal);
-
     $('#saveNotifBtn').addEventListener('click', () => {
       const time = $('#reminderTime').value;
       if (!/^\d{2}:\d{2}$/.test(time)) { toast('Selecciona una hora válida'); return; }
@@ -2579,7 +2443,6 @@
       authMode = authMode === 'login' ? 'signup' : 'login';
       authStep = 'identify';
       pendingIdentifier = '';
-      pendingKind = 'email';
       forceProfileSetup = false;
       try { sessionStorage.removeItem(PENDING_SIGNUP_KEY); } catch (error) { /* sin sesión */ }
       setAuthError('');
@@ -2591,17 +2454,14 @@
     const backToIdentify = () => {
       authStep = 'identify';
       pendingIdentifier = '';
-      pendingKind = 'email';
       forceProfileSetup = false;
       authCallbackError = false;
       try { sessionStorage.removeItem(PENDING_SIGNUP_KEY); } catch (error) { /* sin sesión */ }
-      $('#authCode').value = '';
       $('#authIdentifier').value = '';
       setAuthError('');
       renderAuthForm();
     };
 
-    $('#changeIdentifierBtn').addEventListener('click', () => { backToIdentify(); $('#authIdentifier').focus(); });
     $('#changeEmailBtn').addEventListener('click', () => { backToIdentify(); $('#authIdentifier').focus(); });
     $('#authCallbackBackBtn').addEventListener('click', backToIdentify);
 
@@ -2612,7 +2472,7 @@
       button.disabled = true;
       button.textContent = 'Enviando…';
       try {
-        const ok = await sendCode();
+        const ok = await sendMagicLink();
         if (!ok) {
           errorNode.textContent = $('#authError').textContent || 'No se pudo reenviar el enlace.';
           errorNode.classList.remove('hidden');
@@ -2634,10 +2494,9 @@
       if (!sb) { setAuthError('Supabase no está disponible. Usa el modo local.'); return; }
       const submit = $('#authSubmit');
       submit.disabled = true;
-      submit.textContent = authStep === 'sms' ? 'Verificando…' : 'Enviando…';
+      submit.textContent = 'Enviando…';
       try {
-        if (authStep === 'identify') await sendCode();
-        else await verifySmsCode();
+        await sendMagicLink();
       } catch (error) {
         setAuthError(error && error.message ? error.message : 'No se pudo completar la acción.');
       } finally {
