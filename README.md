@@ -7,10 +7,11 @@ PWA monocromática para el control capilar masculino: perfil de rizo, inventario
 - **Estética**: Tailwind CSS vía CDN, fuente `Outfit` (Google Fonts) y paleta estrictamente monocromática (`#09090b`, `#121214`, `#27272a`, `#a1a1aa`, `#fafafa`). Desplegables personalizados con menú propio (teclado incluido) para perfil, categorías, estado, **hora del recordatorio y fecha del registro**; navegación inferior flotante en móvil y barra lateral en escritorio.
 - **PWA**: `manifest.json` con `display: standalone`, tema `#09090b` e ícono SVG minimalista; `sw.js` con caché offline básica, recordatorios y manejo de `push`/`notificationclick`.
 - **Notificaciones**: permiso con `Notification.requestPermission()`, hora configurable, aviso diario basado en el plan del día y notificación de prueba.
-- **Autenticación**: Google OAuth y email/contraseña con Supabase (`@supabase/supabase-js` vía CDN).
-- **Sincronización**: `user_profile`, `products`, `tools` y `schedule_logs` con RLS por `auth.uid()`. Los cambios hechos en cualquier dispositivo se suben y se reciben en los demás mediante **Supabase Realtime**; al volver del segundo plano también se refresca automáticamente. Si las tablas aún no existen o no hay sesión, la app sigue funcionando en **modo local** (localStorage).
+- **Autenticación**: Google, Microsoft (Azure) y Facebook OAuth; email/contraseña o teléfono con código SMS; sesión local sin cuenta. Todo con Supabase (`@supabase/supabase-js` vía CDN).
+- **Perfil social**: nombre, apellido, **usuario único**, nombre a mostrar independiente, estilo de tipografía, biografía, foto de perfil, banner y teléfono vinculado. El usuario se valida en tiempo real y se protege con un índice único en minúsculas.
+- **Sincronización**: `user_profile`, `products`, `tools` y `schedule_logs` con RLS por `auth.uid()`. Los cambios hechos en cualquier dispositivo se suben y se reciben en los demás mediante **Supabase Realtime**; al volver del segundo plano también se refresca automáticamente. Las imágenes se guardan en el bucket público `avatars` de Supabase Storage. Si las tablas aún no existen o no hay sesión, la app sigue funcionando en **modo local** (localStorage).
 - **Módulos**:
-  1. Perfil capilar (patrón 2C–4A, porosidad, grosor y objetivo).
+  1. Perfil social y capilar (identidad personalizable + patrón 2C–4A, porosidad, grosor y objetivo).
   2. Inventario de 6 categorías de productos con estados, etiquetas de componentes e indicador de compatibilidad; 9 herramientas esenciales precargadas más herramientas personalizadas.
   3. Horario semanal calculado a partir del perfil y del inventario disponible, con sugerencias discretas de productos faltantes, registro diario y puntuación de definición/frizz (1–5).
 
@@ -18,18 +19,19 @@ PWA monocromática para el control capilar masculino: perfil de rizo, inventario
 
 1. Abre esta carpeta en VS Code.
 2. Inicia **Live Server** sobre `index.html` (o sirve la carpeta con cualquier servidor estático).
-3. Pulsa **Continuar sin cuenta (modo local)** para probar sin backend, o usa Google / email para sincronizar.
+3. Pulsa **Continuar sin cuenta (modo local)** para probar sin backend, o entra con Google, Microsoft, Facebook, email/contraseña o con tu teléfono mediante código SMS.
 
 > Los Service Workers requieren `http://localhost` o HTTPS. `file://` no los registra.
 
 ## Configurar Supabase
 
 1. Entra en [Supabase](https://supabase.com/) y abre el proyecto.
-2. Ve a **SQL Editor → New query**, pega todo `schema.sql` y pulsa **Run** (incluye las cuatro tablas, RLS y su inclusión en la publicación `supabase_realtime` para que la sincronización entre dispositivos funcione).
-3. Activa Google en **Authentication → Providers → Google** y añade como *Redirect URL* la URL de tu despliegue (y `http://localhost:5500` para Live Server; ajusta el puerto al de tu servidor).
-4. En **Authentication → URL Configuration**, añade la misma URL a *Site URL* y *Redirect URLs*.
-5. Recarga la app e inicia sesión. Los datos locales se suben automáticamente en la primera sincronización.
-6. Si ya tenías la PWA instalada, ciérrala y ábrela de nuevo para que descargue la versión con Realtime (el Service Worker se actualiza solo).
+2. Ve a **SQL Editor → New query**, pega todo `schema.sql` y pulsa **Run**. Es idempotente: crea/actualiza las columnas del perfil social, el índice único de usuario, la función `username_available`, las cuatro tablas, RLS, su inclusión en `supabase_realtime` y el bucket `avatars` con sus políticas de Storage.
+3. Activa los proveedores que quieras usar en **Authentication → Providers**: **Google**, **Azure** (se muestra como Microsoft en la app) y **Facebook**. Cada uno necesita su propio Client ID/Secret y la *Redirect URL* de Supabase.
+4. Para entrar por teléfono, configura un proveedor SMS en **Authentication → Providers → Phone** (Twilio, MessageBird, Vonage, etc.). Sin ese paso el botón de teléfono mostrará el error del proveedor.
+5. En **Authentication → URL Configuration**, añade la URL de tu despliegue (y `http://localhost:5500` para Live Server; ajusta el puerto) a *Site URL* y *Redirect URLs*.
+6. Recarga la app e inicia sesión. La primera vez se te pedirá usuario y nombre a mostrar; después podrás editar todo desde **Mi perfil**. Los datos locales se suben automáticamente.
+7. Si ya tenías la PWA instalada, ciérrala y ábrela de nuevo para que descargue la versión nueva (el Service Worker se actualiza solo).
 
 Las credenciales (URL y clave publishable) ya están configuradas en `app.js`. Son públicas por diseño; la seguridad de los datos la garantizan las políticas RLS de `schema.sql`.
 
@@ -62,19 +64,20 @@ No hay variables de entorno obligatorias: el proyecto es estático y las credenc
 ```
 curly-tracker/
 ├── index.html      # Interfaz, layouts y estilos
-├── app.js          # Estado, Supabase, compatibilidad, horario y notificaciones
+├── app.js          # Estado, autenticación, perfil social, Supabase, horario y notificaciones
 ├── manifest.json   # Metadata PWA
 ├── sw.js           # Service Worker (offline + notificaciones)
 ├── icon.svg        # Ícono monocromático (fuente)
 ├── icon-192.png    # Ícono PWA 192 px
 ├── icon-512.png    # Ícono PWA 512 px
-├── schema.sql      # Tablas + RLS
+├── schema.sql      # Tablas, perfil social, Storage + RLS + Realtime
 ├── .gitignore
 └── README.md
 ```
 
 ## Uso rápido
 
+- En **Mi perfil** personaliza usuario, nombre a mostrar, tipografía, biografía, foto, banner y teléfono; el cambio se sincroniza solo.
 - Toca el estado de un producto para ciclar entre *En uso → Por acabarse → No lo tengo*.
 - Marca herramientas para que pasen a formar parte de los pasos de la rutina.
 - El horario nunca incluye productos que no tienes; cuando falta algo relevante aparece una sugerencia discreta.

@@ -183,6 +183,35 @@
     .scroll-x::-webkit-scrollbar { display: none; }
     .safe-bottom { padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
     @media (min-width: 1024px) { .safe-bottom { padding-bottom: 48px; } }
+
+    /* Autenticación social */
+    .auth-tab {
+      flex: 1; border-radius: 9px; padding: 9px 10px; font-size: 13px;
+      color: #a1a1aa; transition: color .15s ease, background .15s ease;
+    }
+    .auth-tab:hover { color: #fafafa; }
+    .auth-tab[data-active="true"] { background: #fafafa; color: #09090b; font-weight: 600; }
+    .oauth-list { display: grid; gap: 10px; margin-top: 28px; }
+
+    /* Perfil social */
+    .profile-banner {
+      background-color: #18181b; background-position: center; background-size: cover;
+      background-repeat: no-repeat;
+    }
+    .profile-avatar {
+      background-color: #27272a; background-position: center; background-size: cover;
+      background-repeat: no-repeat;
+    }
+    .name-style-normal { font-weight: 600; letter-spacing: -.02em; }
+    .name-style-bold { font-weight: 800; letter-spacing: -.045em; }
+    .name-style-italic { font-style: italic; font-weight: 500; }
+    .name-style-serif { font-family: Georgia, 'Times New Roman', serif; font-weight: 600; }
+    .name-style-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 500; letter-spacing: -.03em; }
+    .name-style-wide { font-weight: 300; letter-spacing: .18em; text-transform: uppercase; }
+    .name-style-script { font-family: 'Brush Script MT', 'Segoe Script', cursive; font-weight: 400; letter-spacing: .01em; }
+    .file-input { display: none; }
+    .hint-ok { color: #a1a1aa; }
+    .hint-error { color: #fafafa; }
   </style>
 </head>
 <body class="min-h-screen antialiased">
@@ -202,33 +231,102 @@
         <h2 id="authTitle" class="text-xl font-semibold">Bienvenido de nuevo</h2>
         <p id="authSubtitle" class="mt-1.5 text-sm muted">Entra para sincronizar tu perfil, inventario y rutina.</p>
 
-        <button id="googleBtn" class="btn-ghost mt-7 w-full" type="button">
-          <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" aria-hidden="true">
-            <path fill="#fafafa" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3Z"/>
-            <path fill="#a1a1aa" d="M12 22c2.7 0 5-.9 6.6-2.5l-3.2-2.5c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.7-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22Z"/>
-            <path fill="#71717a" d="M6.4 13.8A6 6 0 0 1 6.3 12c0-.6.1-1.2.1-1.8V7.6H3.1a10 10 0 0 0 0 8.8l3.3-2.6Z"/>
-            <path fill="#52525b" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.6l3.3 2.6C7.2 7.6 9.4 5.9 12 5.9Z"/>
-          </svg>
-          <span>Continuar con Google</span>
-        </button>
+        <div class="oauth-list">
+          <button id="googleBtn" class="btn-ghost w-full" type="button">
+            <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" aria-hidden="true">
+              <path fill="#fafafa" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3Z"/>
+              <path fill="#a1a1aa" d="M12 22c2.7 0 5-.9 6.6-2.5l-3.2-2.5c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.7-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22Z"/>
+              <path fill="#71717a" d="M6.4 13.8A6 6 0 0 1 6.3 12c0-.6.1-1.2.1-1.8V7.6H3.1a10 10 0 0 0 0 8.8l3.3-2.6Z"/>
+              <path fill="#52525b" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.6l3.3 2.6C7.2 7.6 9.4 5.9 12 5.9Z"/>
+            </svg>
+            <span>Continuar con Google</span>
+          </button>
+          <button id="microsoftBtn" class="btn-ghost w-full" type="button">
+            <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" aria-hidden="true">
+              <path fill="#fafafa" d="M3 3h8v8H3z"/><path fill="#a1a1aa" d="M13 3h8v8h-8z"/>
+              <path fill="#a1a1aa" d="M3 13h8v8H3z"/><path fill="#fafafa" d="M13 13h8v8h-8z"/>
+            </svg>
+            <span>Continuar con Microsoft</span>
+          </button>
+          <button id="facebookBtn" class="btn-ghost w-full" type="button">
+            <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" aria-hidden="true">
+              <path fill="#fafafa" d="M13.6 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.4-.1-2.4 0-4.1 1.5-4.1 4.2v2.2H7.9V13h2.4v8h3.3Z"/>
+            </svg>
+            <span>Continuar con Facebook</span>
+          </button>
+        </div>
 
         <div class="my-6 flex items-center gap-3">
           <span class="h-px flex-1 bg-[#27272a]"></span>
-          <span class="text-[11px] uppercase tracking-[.18em] text-[#71717a]">o con email</span>
+          <span class="text-[11px] uppercase tracking-[.18em] text-[#71717a]">o con email o teléfono</span>
           <span class="h-px flex-1 bg-[#27272a]"></span>
         </div>
 
+        <div id="authMethodTabs" class="seg mb-5">
+          <button class="auth-tab" type="button" data-auth-method="email" data-active="true">Email</button>
+          <button class="auth-tab" type="button" data-auth-method="phone" data-active="false">Teléfono</button>
+        </div>
+
+        <div id="signupFields" class="mb-5 hidden space-y-4">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="label" for="authFirstName">Nombre</label>
+              <input class="field" id="authFirstName" type="text" autocomplete="given-name" placeholder="Sebastián" />
+            </div>
+            <div>
+              <label class="label" for="authLastName">Apellido</label>
+              <input class="field" id="authLastName" type="text" autocomplete="family-name" placeholder="Daza" />
+            </div>
+          </div>
+          <div>
+            <label class="label" for="authUsername">Usuario único</label>
+            <input class="field" id="authUsername" type="text" autocomplete="username" placeholder="sebasdaza" maxlength="20" />
+            <p id="authUsernameStatus" class="mt-1.5 text-xs faint">3–20 caracteres: letras, números, punto o guion bajo.</p>
+          </div>
+          <div>
+            <label class="label" for="authDisplayName">Nombre a mostrar</label>
+            <input class="field" id="authDisplayName" type="text" placeholder="Como te verán los demás" maxlength="50" />
+            <p class="mt-1.5 text-xs faint">Puede ser distinto de tu usuario y cambiar la tipografía.</p>
+          </div>
+          <div>
+            <label class="label" for="authDisplayStyle">Estilo del nombre</label>
+            <select class="field" id="authDisplayStyle">
+              <option value="normal">Normal · Outfit</option>
+              <option value="bold">Negrita</option>
+              <option value="italic">Cursiva</option>
+              <option value="serif">Serif elegante</option>
+              <option value="mono">Monoespacio</option>
+              <option value="wide">Espaciado y ligero</option>
+              <option value="script">Manuscrita</option>
+            </select>
+          </div>
+        </div>
+
         <form id="authForm" novalidate>
-          <div class="space-y-4">
+          <div id="emailFields" class="space-y-4">
             <div>
               <label class="label" for="authEmail">Email</label>
-              <input class="field" id="authEmail" type="email" autocomplete="email" placeholder="tu@email.com" required />
+              <input class="field" id="authEmail" type="email" autocomplete="email" placeholder="tu@email.com" />
             </div>
             <div>
               <label class="label" for="authPassword">Contraseña</label>
-              <input class="field" id="authPassword" type="password" autocomplete="current-password" placeholder="Mínimo 6 caracteres" required minlength="6" />
+              <input class="field" id="authPassword" type="password" autocomplete="current-password" placeholder="Mínimo 6 caracteres" minlength="6" />
             </div>
           </div>
+
+          <div id="phoneFields" class="hidden space-y-4">
+            <div id="phoneRequest">
+              <label class="label" for="authPhone">Teléfono</label>
+              <input class="field" id="authPhone" type="tel" autocomplete="tel" placeholder="+57 300 123 4567" />
+              <p class="mt-1.5 text-xs faint">Incluye el código de tu país. Te enviaremos un código por SMS.</p>
+            </div>
+            <div id="phoneVerify" class="hidden">
+              <label class="label" for="authCode">Código SMS</label>
+              <input class="field" id="authCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="6" />
+              <button id="changePhoneBtn" class="mt-2 text-xs muted underline-offset-4 hover:text-white hover:underline" type="button">Cambiar número</button>
+            </div>
+          </div>
+
           <button id="authSubmit" class="btn-primary mt-6 w-full" type="submit">Entrar</button>
         </form>
 
@@ -325,52 +423,139 @@
         <section id="view-perfil" data-view="perfil" class="hidden animate-in">
           <div class="mb-6">
             <p class="text-xs uppercase tracking-[.16em] faint">Módulo 01</p>
-            <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Mi perfil capilar</h1>
-            <p class="mt-2 max-w-2xl text-sm muted">Define tus bases. El horario y las recomendaciones se recalculan automáticamente con estos datos.</p>
+            <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Mi perfil</h1>
+            <p class="mt-2 max-w-2xl text-sm muted">Tu identidad y tus bases capilares. El horario se recalcula automáticamente con estos datos.</p>
           </div>
+
+          <div id="socialProfileCard" class="surface mb-5 overflow-hidden"></div>
+
           <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div class="surface p-5 sm:p-6">
-              <div class="grid gap-5 sm:grid-cols-2">
+            <div class="space-y-5">
+              <div class="surface p-5 sm:p-6">
                 <div>
-                  <label class="label" for="profilePattern">Patrón de rizo</label>
-                  <select class="field" id="profilePattern">
-                    <option value="2C">2C · Ondas definidas</option>
-                    <option value="3A">3A · Rizos sueltos</option>
-                    <option value="3B">3B · Rizos medianos</option>
-                    <option value="3C">3C · Rizos apretados</option>
-                    <option value="4A">4A · Rizos muy apretados</option>
-                  </select>
+                  <p class="label">Identidad pública</p>
+                  <p class="text-sm muted">Tu usuario es único; el nombre a mostrar puede cambiar cuando quieras.</p>
                 </div>
-                <div>
-                  <label class="label" for="profilePorosity">Porosidad</label>
-                  <select class="field" id="profilePorosity">
-                    <option value="baja">Baja · Absorbe despacio</option>
-                    <option value="media">Media · Equilibrada</option>
-                    <option value="alta">Alta · Absorbe rápido</option>
-                  </select>
+                <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label class="label" for="profileFirstName">Nombre</label>
+                    <input class="field" id="profileFirstName" type="text" autocomplete="given-name" placeholder="Sebastián" maxlength="40" />
+                  </div>
+                  <div>
+                    <label class="label" for="profileLastName">Apellido</label>
+                    <input class="field" id="profileLastName" type="text" autocomplete="family-name" placeholder="Daza" maxlength="40" />
+                  </div>
+                  <div>
+                    <label class="label" for="profileUsername">Usuario único</label>
+                    <input class="field" id="profileUsername" type="text" autocomplete="username" placeholder="sebasdaza" maxlength="20" />
+                    <p id="profileUsernameStatus" class="mt-1.5 text-xs faint">3–20 caracteres: letras, números, punto o guion bajo.</p>
+                  </div>
+                  <div>
+                    <label class="label" for="profileDisplayName">Nombre a mostrar</label>
+                    <input class="field" id="profileDisplayName" type="text" placeholder="Como te verán los demás" maxlength="50" />
+                  </div>
+                  <div>
+                    <label class="label" for="profileDisplayNameStyle">Estilo del nombre</label>
+                    <select class="field" id="profileDisplayNameStyle">
+                      <option value="normal">Normal · Outfit</option>
+                      <option value="bold">Negrita</option>
+                      <option value="italic">Cursiva</option>
+                      <option value="serif">Serif elegante</option>
+                      <option value="mono">Monoespacio</option>
+                      <option value="wide">Espaciado y ligero</option>
+                      <option value="script">Manuscrita</option>
+                    </select>
+                  </div>
+                  <div>
+                    <span class="label">Teléfono vinculado</span>
+                    <div class="flex h-[45px] items-center justify-between gap-2 rounded-xl border border-[#27272a] bg-[#09090b] px-3">
+                      <span id="profilePhone" class="truncate text-sm muted">Sin vincular</span>
+                      <button id="linkPhoneBtn" class="shrink-0 text-xs text-[#a1a1aa] underline-offset-4 hover:text-white hover:underline" type="button">Vincular</button>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label class="label" for="profileThickness">Grosor del cabello</label>
-                  <select class="field" id="profileThickness">
-                    <option value="fino">Fino</option>
-                    <option value="medio">Medio</option>
-                    <option value="grueso">Grueso</option>
-                  </select>
+                <div class="mt-4">
+                  <label class="label" for="profileBio">Biografía</label>
+                  <textarea class="field" id="profileBio" rows="2" maxlength="160" placeholder="Cuéntanos algo sobre tu rutina..."></textarea>
                 </div>
-                <div>
-                  <label class="label" for="profileGoal">Objetivo actual</label>
-                  <select class="field" id="profileGoal">
-                    <option value="frizz">Control de frizz</option>
-                    <option value="definicion">Definición</option>
-                    <option value="encogimiento">Controlar encogimiento</option>
-                    <option value="salud">Salud general</option>
-                  </select>
+                <div class="hairline my-6"></div>
+                <p class="label">Imágenes</p>
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div class="surface-flat p-4">
+                    <div class="flex items-center gap-3">
+                      <div id="avatarPreview" class="profile-avatar h-12 w-12 shrink-0 rounded-full border border-[#27272a]"></div>
+                      <div class="min-w-0 flex-1">
+                        <p class="text-sm font-medium">Foto de perfil</p>
+                        <p class="text-[11px] faint">PNG, JPG o WEBP · máx. 5 MB</p>
+                      </div>
+                    </div>
+                    <div class="mt-3 flex gap-2">
+                      <label class="btn-ghost flex-1 cursor-pointer">Cambiar<input id="profileAvatarInput" class="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" /></label>
+                      <button id="removeAvatarBtn" class="btn-ghost" type="button">Quitar</button>
+                    </div>
+                  </div>
+                  <div class="surface-flat p-4">
+                    <div class="flex items-center gap-3">
+                      <div id="bannerPreview" class="profile-banner h-12 w-full shrink-0 rounded-lg border border-[#27272a]"></div>
+                    </div>
+                    <p class="mt-3 text-sm font-medium">Banner</p>
+                    <p class="text-[11px] faint">PNG, JPG o WEBP · máx. 5 MB</p>
+                    <div class="mt-3 flex gap-2">
+                      <label class="btn-ghost flex-1 cursor-pointer">Cambiar<input id="profileBannerInput" class="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" /></label>
+                      <button id="removeBannerBtn" class="btn-ghost" type="button">Quitar</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
+                  <p class="text-xs faint">Los cambios se guardan y sincronizan automáticamente.</p>
+                  <button id="saveIdentityBtn" class="btn-primary" type="button">Guardar identidad</button>
                 </div>
               </div>
-              <div class="hairline my-6"></div>
-              <div class="flex flex-wrap items-center justify-between gap-4">
-                <p class="text-xs faint">Los cambios se guardan y sincronizan automáticamente.</p>
-                <button id="saveProfileBtn" class="btn-primary" type="button">Guardar perfil</button>
+
+              <div class="surface p-5 sm:p-6">
+                <p class="label">Perfil capilar</p>
+                <div class="grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <label class="label" for="profilePattern">Patrón de rizo</label>
+                    <select class="field" id="profilePattern">
+                      <option value="2C">2C · Ondas definidas</option>
+                      <option value="3A">3A · Rizos sueltos</option>
+                      <option value="3B">3B · Rizos medianos</option>
+                      <option value="3C">3C · Rizos apretados</option>
+                      <option value="4A">4A · Rizos muy apretados</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="label" for="profilePorosity">Porosidad</label>
+                    <select class="field" id="profilePorosity">
+                      <option value="baja">Baja · Absorbe despacio</option>
+                      <option value="media">Media · Equilibrada</option>
+                      <option value="alta">Alta · Absorbe rápido</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="label" for="profileThickness">Grosor del cabello</label>
+                    <select class="field" id="profileThickness">
+                      <option value="fino">Fino</option>
+                      <option value="medio">Medio</option>
+                      <option value="grueso">Grueso</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="label" for="profileGoal">Objetivo actual</label>
+                    <select class="field" id="profileGoal">
+                      <option value="frizz">Control de frizz</option>
+                      <option value="definicion">Definición</option>
+                      <option value="encogimiento">Controlar encogimiento</option>
+                      <option value="salud">Salud general</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="hairline my-6"></div>
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                  <p class="text-xs faint">Los cambios se guardan y sincronizan automáticamente.</p>
+                  <button id="saveProfileBtn" class="btn-primary" type="button">Guardar perfil capilar</button>
+                </div>
               </div>
             </div>
             <div class="space-y-5">

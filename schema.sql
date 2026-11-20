@@ -17,6 +17,38 @@ create table if not exists public.user_profile (
   updated_at timestamptz not null default now()
 );
 
+-- ---------- identidad social (idempotente) ----------
+alter table public.user_profile add column if not exists first_name text not null default '';
+alter table public.user_profile add column if not exists last_name text not null default '';
+alter table public.user_profile add column if not exists username text not null default '';
+alter table public.user_profile add column if not exists display_name text not null default '';
+alter table public.user_profile add column if not exists display_style text not null default 'normal';
+alter table public.user_profile add column if not exists bio text not null default '';
+alter table public.user_profile add column if not exists avatar_url text not null default '';
+alter table public.user_profile add column if not exists banner_url text not null default '';
+alter table public.user_profile add column if not exists phone text not null default '';
+
+-- El usuario se compara en minúsculas y los valores vacíos no cuentan como "ocupados".
+create unique index if not exists user_profile_username_key
+  on public.user_profile (lower(username)) where username <> '';
+
+-- Disponibilidad de usuario: SECURITY DEFINER para poder consultar otras filas
+-- sin exponerlas. Devuelve true si el nombre está libre.
+create or replace function public.username_available(candidate text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select not exists (
+    select 1 from public.user_profile
+    where lower(username) = lower(btrim(coalesce(candidate, '')))
+  );
+$$;
+revoke all on function public.username_available(text) from public;
+grant execute on function public.username_available(text) to anon, authenticated;
+
 -- ---------- products ----------
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
@@ -182,6 +214,41 @@ begin
     end if;
   end loop;
 end $$;
+
+-- ---------- Storage: fotos de perfil y banner ----------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'avatars', 'avatars', true, 5242880,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "avatars_public_read" on storage.objects;
+create policy "avatars_public_read" on storage.objects
+  for select using (bucket_id = 'avatars');
+
+drop policy if exists "avatars_insert_own" on storage.objects;
+create policy "avatars_insert_own" on storage.objects
+  for insert to authenticated with check (
+    bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "avatars_update_own" on storage.objects;
+create policy "avatars_update_own" on storage.objects
+  for update to authenticated using (
+    bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+  ) with check (
+    bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "avatars_delete_own" on storage.objects;
+create policy "avatars_delete_own" on storage.objects
+  for delete to authenticated using (
+    bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+  );
 
 -- Nota: la app funciona en modo local aunque estas tablas no existan todavía.
 -- Cuando se crean, los datos locales se envían a la nube en la primera sincronización.

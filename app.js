@@ -67,6 +67,7 @@
     encogimiento: 'Controlar encogimiento',
     salud: 'Salud general'
   };
+  const DISPLAY_STYLES = ['normal', 'bold', 'italic', 'serif', 'mono', 'wide', 'script'];
   const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   const VIEW_LABELS = {
     hoy: 'Hoy', perfil: 'Mi perfil capilar', inventario: 'Inventario',
@@ -97,7 +98,8 @@
     calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>',
     star: '<path d="m12 3 2.9 5.9 6.5 1-4.7 4.6 1.1 6.5L12 18l-5.8 3 1.1-6.5L2.6 9.9l6.5-1Z"/>',
     lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
-    download: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 19h16"/>'
+    download: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 19h16"/>',
+    phone: '<path d="M6.6 3h3l1.5 4-2 1.4a12 12 0 0 0 5.5 5.5l1.4-2 4 1.5v3a2 2 0 0 1-2.2 2A17 17 0 0 1 4.6 5.2 2 2 0 0 1 6.6 3Z"/>'
   };
 
   function icon(name, cls = 'h-5 w-5') {
@@ -397,9 +399,38 @@
   }
 
   /* ---------------- Estado local ---------------- */
+  function sanitizeUsername(value) {
+    return String(value || '').trim().toLowerCase()
+      .replace(/^@/, '')
+      .replace(/[^a-z0-9._]/g, '')
+      .slice(0, 20);
+  }
+
+  const validUsername = (value) => /^[a-z0-9._]{3,20}$/.test(String(value || ''));
+
+  function normalizeProfile(raw = {}) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    const pick = (value, allowed, fallback) => allowed.includes(value) ? value : fallback;
+    return {
+      curl_pattern: pick(source.curl_pattern, ['2C', '3A', '3B', '3C', '4A'], '3A'),
+      porosity: pick(source.porosity, ['baja', 'media', 'alta'], 'media'),
+      thickness: pick(source.thickness, ['fino', 'medio', 'grueso'], 'medio'),
+      goal: pick(source.goal, ['frizz', 'definicion', 'encogimiento', 'salud'], 'definicion'),
+      first_name: String(source.first_name || '').slice(0, 40),
+      last_name: String(source.last_name || '').slice(0, 40),
+      username: sanitizeUsername(source.username),
+      display_name: String(source.display_name || '').slice(0, 50),
+      display_style: pick(source.display_style, DISPLAY_STYLES, 'normal'),
+      bio: String(source.bio || '').slice(0, 160),
+      avatar_url: String(source.avatar_url || '').slice(0, 2000),
+      banner_url: String(source.banner_url || '').slice(0, 2000),
+      phone: String(source.phone || '').slice(0, 30)
+    };
+  }
+
   function defaultState() {
     return {
-      profile: { curl_pattern: '3A', porosity: 'media', thickness: 'medio', goal: 'definicion' },
+      profile: normalizeProfile(),
       products: [],
       tools: PRESET_TOOLS.map((name) => ({ id: uid(), name, owned: false, preset: true })),
       settings: { reminderEnabled: true, reminderTime: '08:00' },
@@ -464,7 +495,7 @@
       });
     }
     return {
-      profile: Object.assign({}, fallback.profile, parsed.profile || {}),
+      profile: normalizeProfile(parsed.profile || fallback.profile),
       products,
       tools: mergeTools(parsed.tools),
       settings: Object.assign({}, fallback.settings, parsed.settings || {}),
@@ -480,6 +511,11 @@
   let editingProductId = null;
   let modalIngredients = [];
   let authMode = 'login';
+  let authMethod = 'email';
+  let phoneStep = 'request';
+  let pendingPhone = '';
+  let pendingLinkPhone = '';
+  const PENDING_PROFILE_KEY = 'curly-pending-profile';
   let syncState = {
     ready: false,
     session: null,
@@ -857,13 +893,76 @@
   }
 
   /* ---------------- Render: Perfil ---------------- */
+  function displayName() {
+    const p = state.profile;
+    if (p.display_name) return p.display_name;
+    const full = [p.first_name, p.last_name].filter(Boolean).join(' ');
+    if (full) return full;
+    return p.username ? '@' + p.username : 'Invitado';
+  }
+
+  function avatarInitial() {
+    const p = state.profile;
+    const source = p.display_name || p.first_name || p.username || 'C';
+    return String(source).trim().charAt(0).toUpperCase() || 'C';
+  }
+
+  function renderProfileHero() {
+    const holder = $('#socialProfileCard');
+    if (!holder) return;
+    const p = state.profile;
+    const bannerStyle = p.banner_url ? ` style="background-image:url('${esc(p.banner_url)}')"` : '';
+    const avatarStyle = p.avatar_url ? ` style="background-image:url('${esc(p.avatar_url)}')"` : '';
+    const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
+    const email = syncState.session && syncState.session.user ? syncState.session.user.email : '';
+    const phone = p.phone || (syncState.session && syncState.session.user ? syncState.session.user.phone : '');
+    const chips = [
+      p.username ? `<span class="chip">@${esc(p.username)}</span>` : '',
+      phone ? `<span class="chip">${icon('phone', 'h-3.5 w-3.5')}${esc(phone)}</span>` : '',
+      email ? `<span class="chip">${esc(email)}</span>` : ''
+    ].filter(Boolean).join('');
+
+    holder.innerHTML = `
+      <div class="profile-banner h-28 sm:h-40" ${bannerStyle}></div>
+      <div class="px-5 pb-5 sm:px-6">
+        <div class="-mt-10 flex items-end justify-between gap-3">
+          <div class="profile-avatar flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-[#121214] text-2xl font-semibold sm:h-24 sm:w-24 ${avatarStyle}" role="img" aria-label="Foto de perfil">${p.avatar_url ? '' : esc(avatarInitial())}</div>
+          <span class="chip chip-ok">${icon('check', 'h-3.5 w-3.5')}Perfil activo</span>
+        </div>
+        <h2 class="mt-3 truncate text-2xl name-style-${esc(p.display_style)}">${esc(displayName())}</h2>
+        <p class="mt-0.5 truncate text-sm muted">${fullName ? esc(fullName) : (p.username ? `@${esc(p.username)}` : 'Elige un usuario único')}</p>
+        ${p.bio ? `<p class="mt-3 max-w-2xl text-sm leading-relaxed text-[#d4d4d8]">${esc(p.bio)}</p>` : ''}
+        ${chips ? `<div class="mt-4 flex flex-wrap gap-2">${chips}</div>` : ''}
+      </div>`;
+  }
+
   function renderProfile() {
     const profile = state.profile;
+    $('#profileFirstName').value = profile.first_name;
+    $('#profileLastName').value = profile.last_name;
+    $('#profileUsername').value = profile.username;
+    $('#profileDisplayName').value = profile.display_name;
+    $('#profileDisplayNameStyle').value = profile.display_style;
+    $('#profileBio').value = profile.bio;
     $('#profilePattern').value = profile.curl_pattern;
     $('#profilePorosity').value = profile.porosity;
     $('#profileThickness').value = profile.thickness;
     $('#profileGoal').value = profile.goal;
     syncAllSelects();
+    renderProfileHero();
+
+    const phone = profile.phone || (syncState.session && syncState.session.user ? syncState.session.user.phone : '');
+    $('#profilePhone').textContent = phone || 'Sin vincular';
+    $('#linkPhoneBtn').textContent = phone ? 'Cambiar' : 'Vincular';
+
+    const avatarPreview = $('#avatarPreview');
+    avatarPreview.style.backgroundImage = profile.avatar_url ? `url('${esc(profile.avatar_url)}')` : '';
+    avatarPreview.textContent = profile.avatar_url ? '' : esc(avatarInitial());
+    avatarPreview.classList.toggle('flex', !profile.avatar_url);
+    avatarPreview.classList.toggle('items-center', !profile.avatar_url);
+    avatarPreview.classList.toggle('justify-center', !profile.avatar_url);
+    const bannerPreview = $('#bannerPreview');
+    bannerPreview.style.backgroundImage = profile.banner_url ? `url('${esc(profile.banner_url)}')` : '';
 
     const washNote = profile.curl_pattern === '4A'
       ? 'Frecuencia de lavado baja: prioriza hidratación intermedia y mascarilla semanal.'
@@ -1041,12 +1140,29 @@
   }
 
   function renderAccount() {
-    const email = syncState.session && syncState.session.user && syncState.session.user.email
-      ? syncState.session.user.email
-      : 'Invitado';
-    ['sideEmail', 'accountEmail'].forEach((id) => { const node = $('#' + id); if (node) node.textContent = email; });
-    const initial = email === 'Invitado' ? 'C' : email.charAt(0).toUpperCase();
-    ['sideAvatar', 'topAvatar'].forEach((id) => { const node = $('#' + id); if (node) node.textContent = initial; });
+    const user = syncState.session && syncState.session.user ? syncState.session.user : null;
+    const email = user && user.email ? user.email : 'Invitado';
+    const label = state.profile.username ? `@${state.profile.username}` : displayName();
+    ['sideEmail', 'accountEmail'].forEach((id) => {
+      const node = $('#' + id);
+      if (node) node.textContent = label === 'Invitado' ? email : label;
+    });
+    const initial = avatarInitial();
+    const avatarUrl = state.profile.avatar_url;
+    ['sideAvatar', 'topAvatar'].forEach((id) => {
+      const node = $('#' + id);
+      if (!node) return;
+      if (avatarUrl) {
+        node.style.backgroundImage = `url('${esc(avatarUrl)}')`;
+        node.style.backgroundSize = 'cover';
+        node.style.backgroundPosition = 'center';
+        node.textContent = '';
+      } else {
+        node.style.backgroundImage = '';
+        node.textContent = initial;
+      }
+    });
+    renderProfileHero();
   }
 
   /* ---------------- Modales ---------------- */
@@ -1299,13 +1415,11 @@
   }
 
   function mapProfile(row) {
+    const mapped = normalizeProfile(Object.assign({}, state.profile, row || {}));
     return {
-      curl_pattern: row.curl_pattern || state.profile.curl_pattern,
-      porosity: row.porosity || state.profile.porosity,
-      thickness: row.thickness || state.profile.thickness,
-      goal: row.goal || state.profile.goal,
+      profile: mapped,
       reminder_enabled: row.reminder_enabled !== false,
-      reminder_time: row.reminder_time || state.settings.reminderTime
+      reminder_time: /^\d{2}:\d{2}$/.test(row.reminder_time || '') ? row.reminder_time : state.settings.reminderTime
     };
   }
 
@@ -1351,10 +1465,10 @@
     }
 
     if (profileRes.data) {
-      const profile = mapProfile(profileRes.data);
-      state.profile = { curl_pattern: profile.curl_pattern, porosity: profile.porosity, thickness: profile.thickness, goal: profile.goal };
-      state.settings.reminderEnabled = profile.reminder_enabled;
-      state.settings.reminderTime = profile.reminder_time;
+      const mapped = mapProfile(profileRes.data);
+      state.profile = mapped.profile;
+      state.settings.reminderEnabled = mapped.reminder_enabled;
+      state.settings.reminderTime = mapped.reminder_time;
     }
     state.products = (productsRes.data || []).map(mapProduct);
     state.tools = mergeTools(toolsRes.data || []);
@@ -1432,6 +1546,15 @@
         porosity: state.profile.porosity,
         thickness: state.profile.thickness,
         goal: state.profile.goal,
+        first_name: state.profile.first_name,
+        last_name: state.profile.last_name,
+        username: state.profile.username,
+        display_name: state.profile.display_name,
+        display_style: state.profile.display_style,
+        bio: state.profile.bio,
+        avatar_url: state.profile.avatar_url,
+        banner_url: state.profile.banner_url,
+        phone: state.profile.phone || syncState.session.user.phone || '',
         reminder_enabled: state.settings.reminderEnabled,
         reminder_time: state.settings.reminderTime
       };
@@ -1532,6 +1655,342 @@
     $('#appShell').classList.add('hidden');
   }
 
+  /* ---------------- Identidad social y autenticación ---------------- */
+  function setAuthError(message) {
+    const box = $('#authError');
+    if (!box) return;
+    box.textContent = message || '';
+    box.classList.toggle('hidden', !message);
+  }
+
+  function readPendingProfile() {
+    try { return JSON.parse(sessionStorage.getItem(PENDING_PROFILE_KEY) || 'null'); }
+    catch (error) { return null; }
+  }
+
+  function clearPendingProfile() {
+    try { sessionStorage.removeItem(PENDING_PROFILE_KEY); } catch (error) { /* sin sesión */ }
+  }
+
+  function collectSignupProfile() {
+    return normalizeProfile({
+      first_name: $('#authFirstName').value.trim(),
+      last_name: $('#authLastName').value.trim(),
+      username: sanitizeUsername($('#authUsername').value),
+      display_name: $('#authDisplayName').value.trim(),
+      display_style: $('#authDisplayStyle').value,
+      phone: authMethod === 'phone' ? $('#authPhone').value.trim() : ''
+    });
+  }
+
+  async function isUsernameAvailable(username) {
+    const clean = sanitizeUsername(username);
+    if (!validUsername(clean)) return false;
+    if (state.profile.username === clean) return true;
+    if (!sb) return true;
+    try {
+      const { data, error } = await sb.rpc('username_available', { candidate: clean });
+      if (error) return true; // esquema todavía no actualizado: lo validará la BD
+      return data !== false;
+    } catch (error) {
+      return true;
+    }
+  }
+
+  function setProfileUsernameStatus(message, ok) {
+    const node = $('#profileUsernameStatus');
+    if (!node) return;
+    node.textContent = message;
+    node.className = 'mt-1.5 text-xs ' + (ok ? 'hint-ok' : 'hint-error');
+  }
+
+  function renderAuthForm() {
+    const signup = authMode === 'signup';
+    const phone = authMethod === 'phone';
+    $$('#authMethodTabs .auth-tab').forEach((button) => {
+      button.dataset.active = String(button.dataset.authMethod === authMethod);
+    });
+    $('#signupFields').classList.toggle('hidden', !signup);
+    $('#emailFields').classList.toggle('hidden', phone);
+    $('#phoneFields').classList.toggle('hidden', !phone);
+    $('#phoneRequest').classList.toggle('hidden', phoneStep === 'verify');
+    $('#phoneVerify').classList.toggle('hidden', phoneStep !== 'verify');
+    $('#authTitle').textContent = signup ? 'Crear cuenta' : 'Bienvenido de nuevo';
+    $('#authSubtitle').textContent = signup
+      ? 'Elige cómo entrar y personaliza tu identidad.'
+      : 'Entra para sincronizar tu perfil, inventario y rutina.';
+    $('#authToggle').textContent = signup ? '¿Ya tienes cuenta? Entrar' : '¿No tienes cuenta? Crear cuenta';
+    $('#authPassword').autocomplete = signup ? 'new-password' : 'current-password';
+    $('#authSubmit').textContent = phone
+      ? (phoneStep === 'verify' ? 'Verificar y entrar' : 'Enviar código SMS')
+      : signup ? 'Crear cuenta' : 'Entrar';
+  }
+
+  async function oauthSignIn(provider, label) {
+    if (!sb) { setAuthError('Supabase no está disponible. Usa el modo local.'); return; }
+    setAuthError('');
+    const { error } = await sb.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin + window.location.pathname }
+    });
+    if (error) setAuthError(error.message || `No se pudo iniciar con ${label}`);
+  }
+
+  async function sendPhoneCode(phone, metadata) {
+    if (!sb) { setAuthError('Supabase no está disponible. Usa el modo local.'); return false; }
+    const clean = String(phone || '').trim();
+    if (clean.replace(/\D/g, '').length < 8) {
+      setAuthError('Introduce un teléfono válido, incluido el código de tu país.');
+      return false;
+    }
+    setAuthError('');
+    pendingPhone = clean;
+    const options = { shouldCreateUser: authMode === 'signup' };
+    if (metadata) options.data = metadata;
+    const { error } = await sb.auth.signInWithOtp({ phone: clean, options });
+    if (error) { setAuthError(error.message || 'No se pudo enviar el código SMS.'); return false; }
+    if (metadata) {
+      try { sessionStorage.setItem(PENDING_PROFILE_KEY, JSON.stringify(metadata)); } catch (error) { /* sin sesión */ }
+    }
+    phoneStep = 'verify';
+    renderAuthForm();
+    toast('Código SMS enviado');
+    return true;
+  }
+
+  async function verifyPhoneCode(code) {
+    const token = String(code || '').replace(/\D/g, '').slice(0, 6);
+    if (token.length !== 6) { setAuthError('Introduce el código de 6 dígitos.'); return; }
+    setAuthError('');
+    try {
+      const { data, error } = await sb.auth.verifyOtp({ phone: pendingPhone, token, type: 'sms' });
+      if (error) throw error;
+      const pending = readPendingProfile();
+      if (pending && data && data.session && sb) {
+        const { error: updateError } = await sb.auth.updateUser({ data: pending });
+        if (!updateError) data.session.user.user_metadata = Object.assign({}, data.session.user.user_metadata, pending);
+      }
+      clearPendingProfile();
+      pendingPhone = '';
+      phoneStep = 'request';
+      renderAuthForm();
+      await enterWithSession(data.session);
+    } catch (error) {
+      setAuthError(error && error.message ? error.message : 'No se pudo verificar el código.');
+    }
+  }
+
+  async function applyAuthMetadata(session) {
+    const user = session && session.user;
+    if (!user) return false;
+    const pending = readPendingProfile();
+    const meta = Object.assign({}, user.user_metadata || {}, pending || {});
+    const username = sanitizeUsername(meta.username);
+    if (!username) return false;
+    const before = state.profile;
+    const next = normalizeProfile(Object.assign({}, before, {
+      first_name: meta.first_name || before.first_name,
+      last_name: meta.last_name || before.last_name,
+      username,
+      display_name: meta.display_name || before.display_name || meta.first_name || '',
+      display_style: meta.display_style || before.display_style,
+      phone: user.phone || before.phone || ''
+    }));
+    const changed = Object.keys(next).some((key) => next[key] !== before[key]);
+    clearPendingProfile();
+    if (!changed) return false;
+    state.profile = next;
+    persist();
+    renderAll();
+    if (syncState.ready) pushCloud(true);
+    return true;
+  }
+
+  function openProfileSetupModal() {
+    if (!syncState.session) { toast('Inicia sesión para completar tu perfil'); return; }
+    const p = state.profile;
+    openModal(`${modalHeader('Completa tu perfil', 'Así te verán en Curly Tracker.', false)}
+      <form id="setupProfileForm" class="space-y-4">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div><label class="label" for="setupFirstName">Nombre</label><input class="field" id="setupFirstName" maxlength="40" value="${esc(p.first_name)}" /></div>
+          <div><label class="label" for="setupLastName">Apellido</label><input class="field" id="setupLastName" maxlength="40" value="${esc(p.last_name)}" /></div>
+        </div>
+        <div><label class="label" for="setupUsername">Usuario único</label><input class="field" id="setupUsername" maxlength="20" value="${esc(p.username)}" placeholder="sebasdaza" /><p id="setupUsernameStatus" class="mt-1.5 text-xs faint">3–20 caracteres: letras, números, punto o guion bajo.</p></div>
+        <div><label class="label" for="setupDisplayName">Nombre a mostrar</label><input class="field" id="setupDisplayName" maxlength="50" value="${esc(p.display_name)}" placeholder="Como te verán los demás" /></div>
+        <div><label class="label" for="setupDisplayStyle">Estilo del nombre</label><select class="field" id="setupDisplayStyle">${DISPLAY_STYLES.map((style) => `<option value="${style}" ${style === p.display_style ? 'selected' : ''}>${esc(style.charAt(0).toUpperCase() + style.slice(1))}</option>`).join('')}</select></div>
+        <div><label class="label" for="setupBio">Biografía</label><textarea class="field" id="setupBio" rows="2" maxlength="160" placeholder="Cuéntanos algo sobre ti...">${esc(p.bio)}</textarea></div>
+        <div class="flex flex-wrap justify-end gap-2 pt-2">
+          <button class="btn-ghost" type="button" data-close-modal>Ahora no</button>
+          <button class="btn-primary" type="submit">Guardar perfil</button>
+        </div>
+      </form>`);
+
+    $('#setupProfileForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const username = sanitizeUsername($('#setupUsername').value);
+      const status = $('#setupUsernameStatus');
+      if (!validUsername(username)) { status.textContent = 'Usuario no válido.'; status.className = 'mt-1.5 text-xs hint-error'; return; }
+      if (!(await isUsernameAvailable(username))) { status.textContent = 'Ese usuario ya está en uso.'; status.className = 'mt-1.5 text-xs hint-error'; return; }
+      state.profile = normalizeProfile(Object.assign({}, state.profile, {
+        first_name: $('#setupFirstName').value.trim(),
+        last_name: $('#setupLastName').value.trim(),
+        username,
+        display_name: $('#setupDisplayName').value.trim(),
+        display_style: $('#setupDisplayStyle').value,
+        bio: $('#setupBio').value.trim()
+      }));
+      persist();
+      renderAll();
+      closeModal();
+      if (sb && syncState.session) sb.auth.updateUser({ data: {
+        first_name: state.profile.first_name, last_name: state.profile.last_name,
+        username: state.profile.username, display_name: state.profile.display_name,
+        display_style: state.profile.display_style, bio: state.profile.bio
+      } }).catch(() => {});
+      if (syncState.ready) pushCloud(true);
+      toast('Perfil guardado');
+    });
+  }
+
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function uploadProfileImage(file, kind) {
+    if (!file) return;
+    if (!String(file.type || '').startsWith('image/')) { toast('Selecciona una imagen'); return; }
+    const online = Boolean(sb && syncState.session && syncState.ready);
+    const maxSize = online ? 5 * 1024 * 1024 : 1.5 * 1024 * 1024;
+    if (file.size > maxSize) { toast(online ? 'La imagen debe pesar menos de 5 MB' : 'En modo local la imagen debe pesar menos de 1,5 MB'); return; }
+    try {
+      const key = kind === 'avatar' ? 'avatar_url' : 'banner_url';
+      let url;
+      if (online) {
+        const rawExt = String(file.name || '').split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
+        const ext = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(rawExt) ? rawExt : 'jpg';
+        const path = `${syncState.session.user.id}/${kind}-${Date.now()}.${ext}`;
+        const { error } = await sb.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+        if (error) throw error;
+        const publicUrl = sb.storage.from('avatars').getPublicUrl(path);
+        url = publicUrl && publicUrl.data && publicUrl.data.publicUrl;
+        if (!url) throw new Error('No se obtuvo la URL pública');
+      } else {
+        url = await fileToDataUrl(file);
+      }
+      state.profile[key] = url;
+      persist();
+      renderAll();
+      if (online) pushCloud(true);
+      toast(kind === 'avatar' ? 'Foto de perfil actualizada' : 'Banner actualizado');
+    } catch (error) {
+      console.warn('Curly Tracker: no se pudo subir la imagen.', error);
+      toast('No se pudo subir la imagen');
+    }
+  }
+
+  function removeProfileImage(kind) {
+    const key = kind === 'avatar' ? 'avatar_url' : 'banner_url';
+    state.profile[key] = '';
+    persist();
+    renderAll();
+    if (syncState.ready) pushCloud(true);
+    toast(kind === 'avatar' ? 'Foto eliminada' : 'Banner eliminado');
+  }
+
+  function openPhoneLinkModal() {
+    if (!sb || !syncState.session) { toast('Inicia sesión para vincular tu teléfono'); return; }
+    const current = state.profile.phone || (syncState.session.user && syncState.session.user.phone) || '';
+    openModal(`${modalHeader('Vincular teléfono', 'Te enviaremos un código SMS para confirmarlo.', false)}
+      <form id="linkPhoneForm" class="space-y-4">
+        <div><label class="label" for="linkPhone">Teléfono</label><input class="field" id="linkPhone" type="tel" autocomplete="tel" value="${esc(current)}" placeholder="+57 300 123 4567" /></div>
+        <div id="linkCodeBox" class="hidden"><label class="label" for="linkCode">Código SMS</label><input class="field" id="linkCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" /></div>
+        <p id="linkPhoneStatus" class="hidden text-sm text-[#d4d4d8]"></p>
+        <div class="flex flex-wrap justify-end gap-2 pt-2">
+          <button class="btn-ghost" type="button" data-close-modal>Cancelar</button>
+          <button id="linkPhoneSubmit" class="btn-primary" type="submit">Enviar código</button>
+        </div>
+      </form>`);
+    let step = 'request';
+    const status = $('#linkPhoneStatus');
+    $('#linkPhoneForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      status.classList.add('hidden');
+      const submit = $('#linkPhoneSubmit');
+      submit.disabled = true;
+      try {
+        if (step === 'request') {
+          const phone = $('#linkPhone').value.trim();
+          if (phone.replace(/\D/g, '').length < 8) throw new Error('Introduce un teléfono válido con código de país.');
+          const { error } = await sb.auth.updateUser({ phone });
+          if (error) throw error;
+          pendingLinkPhone = phone;
+          step = 'verify';
+          $('#linkCodeBox').classList.remove('hidden');
+          submit.textContent = 'Vincular teléfono';
+          toast('Código SMS enviado');
+        } else {
+          const token = $('#linkCode').value.replace(/\D/g, '').slice(0, 6);
+          if (token.length !== 6) throw new Error('Introduce el código de 6 dígitos.');
+          const { data, error } = await sb.auth.verifyOtp({ phone: pendingLinkPhone, token, type: 'sms' });
+          if (error) throw error;
+          state.profile.phone = pendingLinkPhone;
+          if (data && data.session) setSyncState(syncState.ready, data.session);
+          persist();
+          renderAll();
+          closeModal();
+          if (syncState.ready) pushCloud(true);
+          toast('Teléfono vinculado');
+        }
+      } catch (error) {
+        status.textContent = error && error.message ? error.message : 'No se pudo completar la vinculación.';
+        status.classList.remove('hidden');
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  }
+
+  async function saveProfileFromInputs() {
+    const username = sanitizeUsername($('#profileUsername').value);
+    if (!validUsername(username)) {
+      setProfileUsernameStatus('Usuario no válido.', false);
+      toast('Revisa el usuario (3–20 caracteres)');
+      return;
+    }
+    if (!(await isUsernameAvailable(username))) {
+      setProfileUsernameStatus('Ese usuario ya está en uso.', false);
+      toast('Ese usuario ya está en uso');
+      return;
+    }
+    setProfileUsernameStatus('Usuario disponible.', true);
+    state.profile = normalizeProfile(Object.assign({}, state.profile, {
+      first_name: $('#profileFirstName').value.trim(),
+      last_name: $('#profileLastName').value.trim(),
+      username,
+      display_name: $('#profileDisplayName').value.trim(),
+      display_style: $('#profileDisplayNameStyle').value,
+      bio: $('#profileBio').value.trim(),
+      curl_pattern: $('#profilePattern').value,
+      porosity: $('#profilePorosity').value,
+      thickness: $('#profileThickness').value,
+      goal: $('#profileGoal').value
+    }));
+    persist();
+    renderAll();
+    if (sb && syncState.session) sb.auth.updateUser({ data: {
+      first_name: state.profile.first_name, last_name: state.profile.last_name,
+      username: state.profile.username, display_name: state.profile.display_name,
+      display_style: state.profile.display_style, bio: state.profile.bio
+    } }).catch(() => {});
+    if (syncState.ready) pushCloud(true);
+    toast('Perfil guardado');
+  }
+
   async function enterWithSession(session) {
     showApp();
     const userId = session && session.user && session.user.id;
@@ -1539,8 +1998,10 @@
     lastEnteredUser = userId;
     setSyncState(false, session);
     await pullCloud(session);
+    const completed = await applyAuthMetadata(session);
     renderAll();
     if (syncState.ready) subscribeRealtime(session);
+    if (!completed && !state.profile.username) setTimeout(() => openProfileSetupModal(), 300);
   }
 
   async function initAuth() {
@@ -1847,6 +2308,7 @@
     ['loginMark', 'sideMark', 'topMark'].forEach((id) => { const node = $('#' + id); if (node) node.innerHTML = curlMark('h-6 w-6'); });
     initSelects();
     initPickers();
+    renderAuthForm();
     renderNav();
     renderAll();
 
@@ -1854,15 +2316,27 @@
     $('#addToolBtn').addEventListener('click', openToolModal);
     $('#openLogBtn').addEventListener('click', () => openLogModal(dateKey()));
 
-    $('#saveProfileBtn').addEventListener('click', () => {
-      state.profile = {
-        curl_pattern: $('#profilePattern').value,
-        porosity: $('#profilePorosity').value,
-        thickness: $('#profileThickness').value,
-        goal: $('#profileGoal').value
-      };
-      persist(); renderAll(); toast('Perfil guardado · horario recalculado');
+    $('#saveProfileBtn').addEventListener('click', saveProfileFromInputs);
+    $('#saveIdentityBtn').addEventListener('click', saveProfileFromInputs);
+
+    $('#profileUsername').addEventListener('blur', async () => {
+      const username = sanitizeUsername($('#profileUsername').value);
+      if (!validUsername(username)) { setProfileUsernameStatus('3–20 caracteres: letras, números, punto o guion bajo.', false); return; }
+      const available = await isUsernameAvailable(username);
+      setProfileUsernameStatus(available ? 'Usuario disponible.' : 'Ese usuario ya está en uso.', available);
     });
+
+    $('#profileAvatarInput').addEventListener('change', (event) => {
+      uploadProfileImage(event.target.files[0], 'avatar');
+      event.target.value = '';
+    });
+    $('#profileBannerInput').addEventListener('change', (event) => {
+      uploadProfileImage(event.target.files[0], 'banner');
+      event.target.value = '';
+    });
+    $('#removeAvatarBtn').addEventListener('click', () => removeProfileImage('avatar'));
+    $('#removeBannerBtn').addEventListener('click', () => removeProfileImage('banner'));
+    $('#linkPhoneBtn').addEventListener('click', openPhoneLinkModal);
 
     $('#saveNotifBtn').addEventListener('click', () => {
       const time = $('#reminderTime').value;
@@ -1944,39 +2418,91 @@
 
     $('#authToggle').addEventListener('click', () => {
       authMode = authMode === 'login' ? 'signup' : 'login';
-      const signup = authMode === 'signup';
-      $('#authTitle').textContent = signup ? 'Crear cuenta' : 'Bienvenido de nuevo';
-      $('#authSubtitle').textContent = signup ? 'Sincroniza tu rutina entre todos tus dispositivos.' : 'Entra para sincronizar tu perfil, inventario y rutina.';
-      $('#authSubmit').textContent = signup ? 'Crear cuenta' : 'Entrar';
-      $('#authToggle').textContent = signup ? '¿Ya tienes cuenta? Entrar' : '¿No tienes cuenta? Crear cuenta';
-      $('#authPassword').autocomplete = signup ? 'new-password' : 'current-password';
-      $('#authError').classList.add('hidden');
+      phoneStep = 'request';
+      pendingPhone = '';
+      setAuthError('');
+      renderAuthForm();
+    });
+
+    $$('#authMethodTabs .auth-tab').forEach((button) => {
+      button.addEventListener('click', () => {
+        authMethod = button.dataset.authMethod;
+        phoneStep = 'request';
+        pendingPhone = '';
+        setAuthError('');
+        renderAuthForm();
+      });
+    });
+
+    $('#changePhoneBtn').addEventListener('click', () => {
+      phoneStep = 'request';
+      pendingPhone = '';
+      setAuthError('');
+      renderAuthForm();
     });
 
     $('#authForm').addEventListener('submit', async (event) => {
       event.preventDefault();
-      const errorBox = $('#authError');
-      errorBox.classList.add('hidden');
-      if (!sb) { errorBox.textContent = 'Supabase no está disponible. Usa el modo local.'; errorBox.classList.remove('hidden'); return; }
-      const email = $('#authEmail').value.trim();
-      const password = $('#authPassword').value;
-      if (!email || password.length < 6) {
-        errorBox.textContent = 'Introduce un email válido y una contraseña de al menos 6 caracteres.';
-        errorBox.classList.remove('hidden');
+      setAuthError('');
+      if (!sb) { setAuthError('Supabase no está disponible. Usa el modo local.'); return; }
+      const submit = $('#authSubmit');
+
+      if (authMethod === 'phone') {
+        if (phoneStep === 'request') {
+          let metadata = null;
+          if (authMode === 'signup') {
+            const profile = collectSignupProfile();
+            if (!profile.first_name || !profile.last_name) {
+              setAuthError('Escribe tu nombre y tu apellido.'); return;
+            }
+            if (!validUsername(profile.username) || !(await isUsernameAvailable(profile.username))) {
+              setAuthError('Elige un usuario válido y disponible.'); return;
+            }
+            profile.display_name = profile.display_name || profile.first_name;
+            metadata = Object.assign({}, profile);
+          }
+          submit.disabled = true;
+          submit.textContent = 'Enviando…';
+          try { await sendPhoneCode($('#authPhone').value, metadata); }
+          finally { submit.disabled = false; renderAuthForm(); }
+          return;
+        }
+
+        submit.disabled = true;
+        submit.textContent = 'Verificando…';
+        try { await verifyPhoneCode($('#authCode').value); }
+        finally { submit.disabled = false; renderAuthForm(); }
         return;
       }
-      const submit = $('#authSubmit');
+
+      const email = $('#authEmail').value.trim();
+      const password = $('#authPassword').value;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 6) {
+        setAuthError('Introduce un email válido y una contraseña de al menos 6 caracteres.');
+        return;
+      }
+
+      let metadata = null;
+      if (authMode === 'signup') {
+        const profile = collectSignupProfile();
+        if (!profile.first_name || !profile.last_name) { setAuthError('Escribe tu nombre y tu apellido.'); return; }
+        if (!validUsername(profile.username)) { setAuthError('El usuario debe tener entre 3 y 20 caracteres.'); return; }
+        if (!(await isUsernameAvailable(profile.username))) { setAuthError('Ese usuario ya está en uso.'); return; }
+        profile.display_name = profile.display_name || profile.first_name;
+        metadata = Object.assign({}, profile);
+      }
+
       submit.disabled = true;
       submit.textContent = 'Un momento…';
       try {
         if (authMode === 'signup') {
-          const { data, error } = await sb.auth.signUp({ email, password });
+          const options = metadata ? { data: metadata } : undefined;
+          const { data, error } = await sb.auth.signUp({ email, password, options });
           if (error) throw error;
           if (data && data.session) {
             await enterWithSession(data.session);
           } else {
-            errorBox.textContent = 'Cuenta creada. Revisa tu email para confirmarla y vuelve a entrar.';
-            errorBox.classList.remove('hidden');
+            setAuthError('Cuenta creada. Revisa tu email para confirmarla y vuelve a entrar.');
           }
         } else {
           const { data, error } = await sb.auth.signInWithPassword({ email, password });
@@ -1984,11 +2510,10 @@
           await enterWithSession(data.session);
         }
       } catch (error) {
-        errorBox.textContent = error && error.message ? error.message : 'No se pudo completar la acción.';
-        errorBox.classList.remove('hidden');
+        setAuthError(error && error.message ? error.message : 'No se pudo completar la acción.');
       } finally {
         submit.disabled = false;
-        submit.textContent = authMode === 'signup' ? 'Crear cuenta' : 'Entrar';
+        renderAuthForm();
       }
     });
 
@@ -2000,14 +2525,9 @@
       toast('Modo local activado · tus datos se guardan en este dispositivo');
     });
 
-    $('#googleBtn').addEventListener('click', async () => {
-      if (!sb) { toast('Supabase no está disponible'); return; }
-      const { error } = await sb.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin + window.location.pathname }
-      });
-      if (error) toast(error.message || 'No se pudo iniciar con Google');
-    });
+    $('#googleBtn').addEventListener('click', () => oauthSignIn('google', 'Google'));
+    $('#microsoftBtn').addEventListener('click', () => oauthSignIn('azure', 'Microsoft'));
+    $('#facebookBtn').addEventListener('click', () => oauthSignIn('facebook', 'Facebook'));
 
     const requestedView = new URLSearchParams(window.location.search).get('view');
     if (requestedView && VIEW_LABELS[requestedView]) setView(requestedView);
