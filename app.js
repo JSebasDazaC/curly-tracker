@@ -118,6 +118,7 @@
     ajustes: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21h-4v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-2.8-2.8.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3v-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1L7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V3h4v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 2.8 2.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1v4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     check: '<path d="m5 12 4 4L19 6"/>',
+    grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
     bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
     trash: '<path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 14h10l1-14M9 7V4h6v3"/>',
     edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
@@ -244,7 +245,7 @@
 
       const trigger = document.createElement('button');
       trigger.type = 'button';
-      trigger.className = 'select-trigger field';
+      trigger.className = `select-trigger field${root.classList && root.classList.contains('inline-edit-wrap') ? ' select-compact' : ''}`;
       trigger.setAttribute('aria-haspopup', 'listbox');
       trigger.setAttribute('aria-expanded', 'false');
 
@@ -1097,16 +1098,6 @@
     updateHeroImages();
   }
 
-  function fitInlineInput(input) {
-    if (input.tagName === 'INPUT') {
-      const length = (input.value || input.placeholder || '').length;
-      input.size = Math.max(8, Math.min(length + 1, input.maxLength || 80));
-    } else if (input.tagName === 'TEXTAREA') {
-      input.style.height = 'auto';
-      input.style.height = Math.max(input.scrollHeight, 38) + 'px';
-    }
-  }
-
   function beginInlineEdit(node) {
     if (inlineEdit) cancelInlineEdit();
     const field = node.dataset.inlineField;
@@ -1132,15 +1123,16 @@
       input.value = original;
     } else if (meta.type === 'textarea') {
       input = document.createElement('textarea');
-      input.rows = 2;
+      input.rows = 1;
       input.value = original;
     } else {
       input = document.createElement('input');
       input.type = 'text';
-      input.value = original;
-      input.maxLength = meta.max || 80;
+      input.value = meta.prefix ? meta.prefix + original : original;
+      input.maxLength = (meta.max || 80) + (meta.prefix ? 1 : 0);
     }
     input.className = meta.type === 'select' ? 'field' : 'inline-input';
+    if (meta.type !== 'select' && node.classList.contains('chip')) input.classList.add('inline-chip');
     input.setAttribute('aria-label', meta.label);
     if (meta.placeholder) input.placeholder = meta.placeholder;
 
@@ -1151,8 +1143,12 @@
     }
     if (actions) wrap.append(input, actions);
     else wrap.appendChild(input);
+
+    const sizer = document.createElement('span');
+    sizer.className = 'inline-sizer';
+    sizer.innerHTML = originalHtml;
     node.innerHTML = '';
-    node.appendChild(wrap);
+    node.append(sizer, wrap);
 
     let focusNode = input;
     let cleanup = null;
@@ -1164,9 +1160,6 @@
       };
       document.addEventListener('pointerdown', onOutside);
       cleanup = () => document.removeEventListener('pointerdown', onOutside);
-    } else {
-      fitInlineInput(input);
-      input.addEventListener('input', () => fitInlineInput(input));
     }
 
     inlineEdit = { field, node, input, original, originalHtml, cleanup };
@@ -1327,8 +1320,11 @@
       return `<button class="shrink-0 rounded-xl px-3.5 py-2 text-sm transition ${currentCategory === category ? 'bg-[#fafafa] font-semibold text-[#09090b]' : 'text-[#a1a1aa] hover:text-white'}" type="button" data-category="${esc(category)}">${esc(shortCategory(category))}<span class="ml-1.5 text-xs opacity-60">${count}</span></button>`;
     }).join('');
 
-    $('#statusTabs').innerHTML = STATUS_FILTERS.map((filter) => `
-      <button class="shrink-0 rounded-xl px-3.5 py-2 text-sm transition ${currentStatusFilter === filter.value ? 'bg-[#fafafa] font-semibold text-[#09090b]' : 'text-[#a1a1aa] hover:text-white'}" type="button" data-status-filter="${esc(filter.value)}">${esc(filter.label)}</button>`).join('');
+    const filterIcons = ['grid', 'bottle'];
+    $('#statusTabs').innerHTML = STATUS_FILTERS.map((filter, index) => `
+      <button class="filter-chip" type="button" data-status-filter="${esc(filter.value)}" data-active="${currentStatusFilter === filter.value}" aria-pressed="${currentStatusFilter === filter.value}">
+        ${icon(filterIcons[index] || 'grid', 'h-3.5 w-3.5')}${esc(filter.label)}
+      </button>`).join('');
 
     const list = state.products.filter((product) => product.category === currentCategory
       && (currentStatusFilter === 'all' || product.status === currentStatusFilter));
@@ -2712,7 +2708,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=40');
+        await navigator.serviceWorker.register('./sw.js?v=41');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
