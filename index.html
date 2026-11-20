@@ -236,7 +236,7 @@
       <div class="surface p-6 sm:p-8">
         <div id="authMainPanel">
         <h2 id="authTitle" class="text-xl font-semibold">Bienvenido de nuevo</h2>
-        <p id="authSubtitle" class="mt-1.5 text-sm muted">Entra con tu correo o red social.</p>
+        <p id="authSubtitle" class="mt-1.5 text-sm muted">Elige cómo continuar.</p>
 
         <div class="oauth-list">
           <button id="googleBtn" class="btn-ghost w-full" type="button">
@@ -265,15 +265,15 @@
 
         <div class="my-6 flex items-center gap-3">
           <span class="h-px flex-1 bg-[#27272a]"></span>
-          <span class="text-[11px] uppercase tracking-[.18em] text-[#71717a]">o con correo</span>
+          <span class="text-[11px] uppercase tracking-[.18em] text-[#71717a]">o</span>
           <span class="h-px flex-1 bg-[#27272a]"></span>
         </div>
 
         <form id="authForm" novalidate>
           <div id="identifierFields">
-            <label class="label" for="authIdentifier">Correo electrónico</label>
-            <input class="field" id="authIdentifier" type="email" autocomplete="email" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="tu@email.com" />
-            <p id="authIdentifierHint" class="mt-1.5 text-xs faint">Escribe tu correo electrónico. Te enviaremos un enlace de verificación.</p>
+            <label class="label" for="authIdentifier">Correo</label>
+            <input class="field" id="authIdentifier" type="email" autocomplete="email" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="nombre@dominio.com" />
+            <p id="authIdentifierHint" class="mt-1.5 text-xs faint">Te enviaremos un enlace.</p>
           </div>
 
           <button id="authSubmit" class="btn-primary mt-6 w-full" type="submit">Entrar</button>
@@ -286,17 +286,17 @@
           ¿No tienes cuenta? Crear cuenta
         </button>
         <button id="localModeBtn" class="mt-4 w-full text-center text-xs faint underline-offset-4 hover:text-white hover:underline" type="button">
-          Continuar sin cuenta (modo local)
+          Continuar sin cuenta
         </button>
         </div>
 
         <div id="authLinkSentPanel" hidden>
-          <h2 class="text-xl font-semibold">Revisa tu correo</h2>
+          <h2 class="text-xl font-semibold">Revisa tu bandeja</h2>
           <p class="mt-1.5 text-sm muted">Te enviamos un enlace de verificación a tu correo. Haz clic en el botón del mensaje para activar tu cuenta</p>
           <p id="linkSentTarget" class="mt-4 text-sm text-[#fafafa]"></p>
           <div class="mt-6 flex flex-col gap-2">
             <button id="reenviarLinkBtn" class="btn-primary w-full" type="button">Reenviar enlace</button>
-            <button id="changeEmailBtn" class="btn-ghost w-full" type="button">Usar otro correo</button>
+            <button id="changeEmailBtn" class="btn-ghost w-full" type="button">Cambiar</button>
           </div>
           <p id="linkSentError" class="mt-4 hidden text-sm text-[#d4d4d8]"></p>
         </div>
@@ -304,16 +304,13 @@
         <div id="authCallbackPanel" hidden>
           <div class="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#27272a] bg-[#121214]" id="callbackMark"></div>
           <h2 id="authCallbackTitle" class="text-xl font-semibold">Verificando el enlace…</h2>
-          <p id="authCallbackMessage" class="mt-1.5 text-sm muted">Estamos activando tu cuenta.</p>
+          <p id="authCallbackMessage" class="mt-1.5 text-sm muted">Activando tu cuenta.</p>
           <div id="authCallbackActions" class="mt-6 hidden">
             <button id="authCallbackBackBtn" class="btn-primary w-full" type="button">Volver a iniciar sesión</button>
           </div>
         </div>
       </div>
 
-      <p class="mt-6 text-center text-xs leading-relaxed text-[#52525b]">
-        Modo local disponible sin cuenta · Datos guardados en este dispositivo
-      </p>
     </div>
   </div>
 
@@ -619,7 +616,7 @@
 
             <div class="space-y-5">
               <div class="surface p-5 sm:p-6">
-                <p class="text-base font-semibold">Cuenta y sincronización</p>
+                <p class="text-base font-semibold">Cuenta</p>
                 <div class="mt-5 space-y-3 text-sm">
                   <div class="flex items-center justify-between gap-3">
                     <span class="muted">Estado</span>
@@ -643,7 +640,6 @@
               </div>
               <div class="surface p-5 sm:p-6">
                 <p class="text-base font-semibold">Datos</p>
-                <p class="mt-1.5 text-sm muted">Puedes exportar una copia JSON o borrar los datos de este dispositivo.</p>
                 <div class="mt-5 flex flex-wrap gap-2">
                   <button id="exportBtn" class="btn-ghost" type="button">Exportar JSON</button>
                   <button id="resetLocalBtn" class="btn-ghost" type="button">Borrar datos locales</button>

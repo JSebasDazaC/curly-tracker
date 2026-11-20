@@ -7,7 +7,7 @@ PWA monocromática para el control capilar masculino: perfil de rizo, inventario
 - **Estética**: Tailwind CSS vía CDN, fuente `Outfit` (Google Fonts) y paleta estrictamente monocromática (`#09090b`, `#121214`, `#27272a`, `#a1a1aa`, `#fafafa`). Desplegables personalizados con menú propio (teclado incluido) para perfil, categorías, estado, **hora del recordatorio y fecha del registro**; navegación inferior flotante en móvil y barra lateral en escritorio.
 - **PWA**: `manifest.json` con `display: standalone`, tema `#09090b` e ícono SVG minimalista; `sw.js` con caché offline básica, recordatorios y manejo de `push`/`notificationclick`.
 - **Notificaciones**: permiso con `Notification.requestPermission()`, hora configurable, aviso diario basado en el plan del día y notificación de prueba.
-- **Autenticación**: Google, Microsoft (Azure) y Facebook OAuth; acceso sin contraseña con **un solo campo de correo electrónico** que envía un **enlace de verificación**; sesión local sin cuenta. Todo con Supabase (`@supabase/supabase-js` vía CDN). En registro, los datos de perfil se piden **después** de verificar el correo. Si el enlace falla o caduca, se muestra una pantalla limpia en español para volver a solicitarlo.
+- **Autenticación**: Google, Microsoft (Azure) y Facebook OAuth; acceso sin contraseña con **un solo campo de correo** que envía un enlace; sesión local sin cuenta. Todo con Supabase (`@supabase/supabase-js` vía CDN). El registro pide los datos de perfil después de abrir el enlace. Si falla o caduca, se muestra una pantalla limpia en español para solicitar otro.
 - **Perfil social**: nombre, apellido, **usuario único**, nombre a mostrar independiente, estilo de tipografía, biografía, foto de perfil y banner. El usuario se valida en tiempo real y se protege con un índice único en minúsculas.
 - **Sincronización**: `user_profile`, `products`, `tools` y `schedule_logs` con RLS por `auth.uid()`. Los cambios hechos en cualquier dispositivo se suben y se reciben en los demás mediante **Supabase Realtime**; al volver del segundo plano también se refresca automáticamente. Las imágenes se guardan en el bucket público `avatars` de Supabase Storage. Si las tablas aún no existen o no hay sesión, la app sigue funcionando en **modo local** (localStorage).
 - **Módulos**:
@@ -19,7 +19,7 @@ PWA monocromática para el control capilar masculino: perfil de rizo, inventario
 
 1. Abre esta carpeta en VS Code.
 2. Inicia **Live Server** sobre `index.html` (o sirve la carpeta con cualquier servidor estático).
-3. Pulsa **Continuar sin cuenta (modo local)** para probar sin backend, o entra con Google, Microsoft, Facebook, o escribe tu correo electrónico y abre el enlace que recibas.
+3. Pulsa **Continuar sin cuenta** para probar sin backend, o entra con Google, Microsoft, Facebook, o escribe tu correo y abre el enlace recibido.
 
 > Los Service Workers requieren `http://localhost` o HTTPS. `file://` no los registra.
 
@@ -30,7 +30,7 @@ PWA monocromática para el control capilar masculino: perfil de rizo, inventario
 3. Activa los proveedores que quieras usar en **Authentication → Providers**: **Google**, **Azure** (se muestra como Microsoft en la app) y **Facebook**. Cada uno necesita su propio Client ID/Secret y la *Redirect URL* de Supabase.
 4. Activa el envío de correo (**Magic Link / Email OTP**) en **Authentication → Providers → Email**. La app envía un enlace de verificación con un botón; al pulsarlo se activa la cuenta. Asegúrate de que la plantilla de correo no mencione códigos de terceros: el mensaje que muestra la app es «Te enviamos un enlace de verificación a tu correo. Haz clic en el botón del mensaje para activar tu cuenta».
 5. En **Authentication → URL Configuration**, añade la URL de tu despliegue (y `http://localhost:5500` para Live Server; ajusta el puerto) a *Site URL* y *Redirect URLs*.
-6. Recarga la app e inicia sesión. En **Crear cuenta** verás primero el campo de correo y, tras abrir el enlace de verificación, se abrirá el formulario con usuario, nombre a mostrar, estilo y biografía. Después podrás editar todo desde **Mi perfil**. Los datos locales se suben automáticamente.
+6. Recarga la app e inicia sesión. En **Crear cuenta** verás el campo de correo y, tras abrir el enlace, se abrirá el formulario con usuario, nombre a mostrar, estilo y biografía. Después podrás editar todo desde **Mi perfil**. Los datos locales se suben automáticamente.
 7. Si ya tenías la PWA instalada, ciérrala y ábrela de nuevo para que descargue la versión nueva (el Service Worker se actualiza solo).
 
 Las credenciales (URL y clave publishable) ya están configuradas en `app.js`. Son públicas por diseño; la seguridad de los datos la garantizan las políticas RLS de `schema.sql`.

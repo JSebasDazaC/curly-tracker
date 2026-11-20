@@ -9,6 +9,7 @@
   const SUPABASE_URL = 'https://zrtxpgwkpilfkewwqppk.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_qByFy6Ocr4UBXmuVztUOIA_e8bxjtIM';
   const LS_KEY = 'curly-tracker:v1';
+  const AUTH_UNAVAILABLE = 'Supabase no está disponible. Usa el modo local.';
 
   const sb = (window.supabase && window.supabase.createClient)
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -1628,7 +1629,7 @@
       console.warn('Curly Tracker: sincronización no disponible.', error);
       setSyncState(false, syncState.session);
       if (!syncState.errorShown) {
-        toast('Sincronización no disponible: datos guardados en este dispositivo');
+        toast('Sin sincronización. Datos guardados aquí.');
         syncState.errorShown = true;
       }
     } finally {
@@ -1680,15 +1681,13 @@
     const raw = String($('#authIdentifier').value || '').trim();
 
     if (!raw) {
-      node.textContent = 'Escribe tu correo electrónico. Te enviaremos un enlace de verificación.';
+      node.textContent = 'Te enviaremos un enlace.';
       node.className = 'mt-1.5 text-xs faint';
     } else if (!validEmail(raw)) {
-      node.textContent = raw.includes('@')
-        ? 'Sigue escribiendo: añade el dominio (ej. @gmail.com).'
-        : 'Añade @ y el dominio para continuar.';
+      node.textContent = raw.includes('@') ? 'Falta el dominio.' : 'Añade @ y el dominio.';
       node.className = 'mt-1.5 text-xs faint';
     } else {
-      node.textContent = 'Correo listo. Te enviaremos un enlace de verificación.';
+      node.textContent = 'Listo.';
       node.className = 'mt-1.5 text-xs hint-ok';
     }
   }
@@ -1725,9 +1724,7 @@
 
     showAuthPanel('main');
     $('#authTitle').textContent = signup ? 'Crear cuenta' : 'Bienvenido de nuevo';
-    $('#authSubtitle').textContent = signup
-      ? 'Solo necesitas tu correo electrónico para empezar.'
-      : 'Entra con tu correo o red social.';
+    $('#authSubtitle').textContent = 'Elige cómo continuar.';
     $('#authToggle').textContent = signup ? '¿Ya tienes cuenta? Entrar' : '¿No tienes cuenta? Crear cuenta';
     $('#authSubmit').textContent = signup ? 'Crear cuenta' : 'Entrar';
 
@@ -1735,7 +1732,7 @@
   }
 
   async function oauthSignIn(provider, label) {
-    if (!sb) { setAuthError('Supabase no está disponible. Usa el modo local.'); return; }
+    if (!sb) { setAuthError(AUTH_UNAVAILABLE); return; }
     setAuthError('');
     const { error } = await sb.auth.signInWithOAuth({
       provider,
@@ -1752,10 +1749,10 @@
   }
 
   async function sendMagicLink() {
-    if (!sb) { setAuthError('Supabase no está disponible. Usa el modo local.'); return false; }
+    if (!sb) { setAuthError(AUTH_UNAVAILABLE); return false; }
     const email = normalizeEmail($('#authIdentifier').value);
     if (!validEmail(email)) {
-      setAuthError('Introduce un correo electrónico válido.');
+      setAuthError('Introduce un correo válido.');
       return false;
     }
     setAuthError('');
@@ -1768,7 +1765,7 @@
     };
     const { error } = await sb.auth.signInWithOtp({ email, options });
     if (error) {
-      setAuthError(error.message || 'No se pudo enviar el enlace de verificación.');
+      setAuthError(error.message || 'No se pudo enviar el enlace.');
       return false;
     }
     try {
@@ -1783,9 +1780,9 @@
   function authErrorText(code) {
     const value = String(code || '').toLowerCase();
     if (value.includes('expired') || value.includes('caduc')) {
-      return 'El enlace ha caducado. Solicita uno nuevo para continuar.';
+      return 'El enlace ha caducado. Solicita otro.';
     }
-    return 'No pudimos verificar el enlace. Solicita uno nuevo para continuar.';
+    return 'No pudimos verificar el enlace. Solicita otro.';
   }
 
   function showAuthCallbackPanel(title, message, isError) {
@@ -1818,7 +1815,7 @@
       window.history.replaceState({}, document.title, url.pathname);
     };
 
-    showAuthCallbackPanel('Verificando el enlace…', 'Estamos activando tu cuenta.', false);
+    showAuthCallbackPanel('Verificando el enlace…', 'Activando tu cuenta.', false);
     let failureCode = errorCode;
     try {
       if (errorCode) throw new Error(authErrorText(errorCode));
@@ -2030,7 +2027,7 @@
   async function initAuth() {
     if (!sb) {
       showLogin();
-      $('#authError').textContent = 'Supabase no está disponible ahora. Puedes continuar en modo local.';
+      $('#authError').textContent = AUTH_UNAVAILABLE;
       $('#authError').classList.remove('hidden');
       return;
     }
@@ -2417,7 +2414,7 @@
     });
 
     $('#resetLocalBtn').addEventListener('click', () => {
-      if (!confirm('¿Borrar todos los datos guardados en este dispositivo? Esta acción no se puede deshacer.')) return;
+      if (!confirm('¿Borrar los datos de este dispositivo? No se puede deshacer.')) return;
       localStorage.removeItem(LS_KEY);
       state = defaultState();
       currentCategory = CATEGORIES[0];
@@ -2477,7 +2474,7 @@
           errorNode.textContent = $('#authError').textContent || 'No se pudo reenviar el enlace.';
           errorNode.classList.remove('hidden');
         } else {
-          toast('Enlace reenviado a tu correo');
+          toast('Enlace reenviado.');
         }
       } catch (error) {
         errorNode.textContent = 'No se pudo reenviar el enlace.';
@@ -2491,7 +2488,7 @@
     $('#authForm').addEventListener('submit', async (event) => {
       event.preventDefault();
       setAuthError('');
-      if (!sb) { setAuthError('Supabase no está disponible. Usa el modo local.'); return; }
+      if (!sb) { setAuthError(AUTH_UNAVAILABLE); return; }
       const submit = $('#authSubmit');
       submit.disabled = true;
       submit.textContent = 'Enviando…';
@@ -2510,7 +2507,7 @@
       showApp();
       setSyncState(false, null);
       setView('hoy');
-      toast('Modo local activado · tus datos se guardan en este dispositivo');
+      toast('Modo local activado.');
     });
 
     $('#googleBtn').addEventListener('click', () => oauthSignIn('google', 'Google'));
