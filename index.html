@@ -56,10 +56,14 @@
     .btn-ghost:hover { color: #fafafa; border-color: #52525b; background: #18181b; }
     .btn-ghost:active { transform: scale(.98); }
     .btn-mini { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; font-size: 12px; border-radius: 10px; }
-    .profile-info-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; }
-    .profile-info-row + .profile-info-row { border-top: 1px solid #27272a; }
-    .profile-info-key { flex: 0 0 auto; color: #a1a1aa; font-size: 12px; }
-    .profile-info-value { min-width: 0; font-size: 13px; text-align: right; overflow-wrap: anywhere; }
+    .profile-stat { display: flex; align-items: center; gap: 12px; padding: 13px; border-radius: 14px; border: 1px solid #27272a; background: #09090b; }
+    .profile-stat-icon { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; border: 1px solid #27272a; background: #121214; color: #a1a1aa; }
+    .profile-feature { padding: 14px; border-radius: 14px; border: 1px solid #27272a; background: #09090b; }
+    .profile-feature-value { margin-top: 8px; font-size: 1.25rem; font-weight: 600; line-height: 1.2; letter-spacing: -.02em; }
+    .profile-note { position: relative; padding-left: 14px; }
+    .profile-note::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 2px; border-radius: 2px; background: #52525b; }
+    .profile-progress { height: 6px; border-radius: 999px; background: #27272a; overflow: hidden; }
+    .profile-progress > span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #71717a, #fafafa); transition: width .3s ease; }
     .field {
       width: 100%; background: #09090b; border: 1px solid #27272a; border-radius: 12px;
       color: #fafafa; padding: 11px 14px; font-size: 15px; outline: none;
@@ -430,11 +434,23 @@
             <div class="space-y-5">
               <div id="profileViewMode" class="space-y-5">
                 <div class="surface p-5 sm:p-6">
-                  <p class="label">Datos personales</p>
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="label">Identidad</p>
+                      <p class="text-sm muted">Así te ven los demás.</p>
+                    </div>
+                    <span class="chip">Perfil</span>
+                  </div>
                   <div id="profileDetailsCard" class="mt-4"></div>
                 </div>
                 <div class="surface p-5 sm:p-6">
-                  <p class="label">Perfil capilar</p>
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="label">Perfil capilar</p>
+                      <p class="text-sm muted">Tu punto de partida para la rutina.</p>
+                    </div>
+                    <span class="chip chip-ok">Activo</span>
+                  </div>
                   <div id="profileHairReadonly" class="mt-4"></div>
                 </div>
               </div>
@@ -707,6 +723,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js?v=17"></script>
+  <script src="./app.js?v=18"></script>
 </body>
 </html>

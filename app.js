@@ -953,6 +953,16 @@
       p.username ? `<span class="chip">@${esc(p.username)}</span>` : '',
       email ? `<span class="chip">${esc(email)}</span>` : ''
     ].filter(Boolean).join('');
+    const profileFields = [p.first_name, p.last_name, p.username, p.display_name, p.bio, p.avatar_url, p.banner_url, p.curl_pattern, p.porosity, p.thickness, p.goal];
+    const completePercent = Math.round(profileFields.filter(Boolean).length / profileFields.length * 100);
+    const progressHtml = `
+      <div class="mt-5 rounded-xl border border-[#27272a] bg-[#121214] p-3">
+        <div class="flex items-center justify-between text-xs">
+          <span class="faint">Perfil completado</span>
+          <span class="font-medium">${completePercent}%</span>
+        </div>
+        <div class="profile-progress mt-2"><span style="width:${completePercent}%"></span></div>
+      </div>`;
 
     holder.innerHTML = `
       <div class="profile-banner h-28 sm:h-40" ${bannerStyle}></div>
@@ -968,6 +978,7 @@
         <p class="mt-0.5 truncate text-sm muted">${fullName ? esc(fullName) : (p.username ? `@${esc(p.username)}` : 'Elige un usuario único')}</p>
         ${p.bio ? `<p class="mt-3 max-w-2xl text-sm leading-relaxed text-[#d4d4d8]">${esc(p.bio)}</p>` : ''}
         ${chips ? `<div class="mt-4 flex flex-wrap gap-2">${chips}</div>` : ''}
+        ${progressHtml}
       </div>`;
   }
 
@@ -995,14 +1006,6 @@
     bannerPreview.style.backgroundImage = profile.banner_url ? `url('${esc(profile.banner_url)}')` : '';
   }
 
-  function profileInfoRows(rows) {
-    return rows.map(([key, value]) => `
-      <div class="profile-info-row">
-        <span class="profile-info-key">${esc(key)}</span>
-        <span class="profile-info-value">${value || '—'}</span>
-      </div>`).join('');
-  }
-
   function renderProfileReadonly() {
     const p = state.profile;
     const email = syncState.session && syncState.session.user ? syncState.session.user.email : '';
@@ -1010,23 +1013,48 @@
       normal: 'Normal', bold: 'Negrita', italic: 'Cursiva', serif: 'Serif elegante',
       mono: 'Monoespacio', wide: 'Espaciado y ligero', script: 'Manuscrita'
     };
-    $('#profileDetailsCard').innerHTML = profileInfoRows([
-      ['Nombre', esc(p.first_name)],
-      ['Apellido', esc(p.last_name)],
-      ['Usuario', p.username ? esc('@' + p.username) : ''],
-      ['Nombre a mostrar', esc(displayName())],
-      ['Estilo del nombre', esc(styleLabels[p.display_style] || 'Normal')],
-      ['Correo', esc(email)],
-      ['Biografía', esc(p.bio)],
-      ['Foto', p.avatar_url ? 'Configurada' : 'Sin foto'],
-      ['Banner', p.banner_url ? 'Configurado' : 'Sin banner']
-    ]);
-    $('#profileHairReadonly').innerHTML = profileInfoRows([
-      ['Patrón', esc(`${p.curl_pattern} · ${PATTERN_LABELS[p.curl_pattern] || ''}`)],
-      ['Porosidad', esc(POROSITY_LABELS[p.porosity] || p.porosity)],
-      ['Grosor', esc(THICKNESS_LABELS[p.thickness] || p.thickness)],
-      ['Objetivo', esc(GOAL_LABELS[p.goal] || p.goal)]
-    ]);
+    const identity = [
+      ['perfil', 'Nombre', p.first_name],
+      ['perfil', 'Apellido', p.last_name],
+      ['star', 'Usuario', p.username ? '@' + p.username : ''],
+      ['spark', 'Nombre a mostrar', displayName()],
+      ['edit', 'Estilo', styleLabels[p.display_style] || 'Normal'],
+      ['cloud', 'Correo', email]
+    ];
+    $('#profileDetailsCard').innerHTML = `
+      <div class="grid gap-3 sm:grid-cols-2">
+        ${identity.map(([glyph, label, value]) => `
+          <div class="profile-stat">
+            <span class="profile-stat-icon">${icon(glyph, 'h-4 w-4')}</span>
+            <div class="min-w-0">
+              <p class="faint text-[11px] uppercase tracking-wider">${esc(label)}</p>
+              <p class="mt-0.5 truncate text-sm font-medium">${esc(value || '—')}</p>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div class="mt-4 rounded-xl border border-[#27272a] bg-[#09090b] p-4">
+        <p class="faint text-[11px] uppercase tracking-wider">Biografía</p>
+        <p class="mt-2 text-sm leading-relaxed text-[#d4d4d8]">${p.bio ? esc(p.bio) : 'Aún no has escrito tu biografía.'}</p>
+      </div>`;
+
+    const features = [
+      ['spark', 'Patrón', p.curl_pattern, PATTERN_LABELS[p.curl_pattern] || ''],
+      ['drop', 'Porosidad', POROSITY_LABELS[p.porosity] || p.porosity, 'Absorción e hidratación'],
+      ['tool', 'Grosor', THICKNESS_LABELS[p.thickness] || p.thickness, 'Textura del cabello'],
+      ['star', 'Objetivo', GOAL_LABELS[p.goal] || p.goal, 'Prioridad de la rutina']
+    ];
+    $('#profileHairReadonly').innerHTML = `
+      <div class="grid gap-3 sm:grid-cols-2">
+        ${features.map(([glyph, label, value, note]) => `
+          <div class="profile-feature">
+            <div class="flex items-center gap-2 faint">
+              ${icon(glyph, 'h-4 w-4')}
+              <span class="text-[11px] uppercase tracking-wider">${esc(label)}</span>
+            </div>
+            <p class="profile-feature-value">${esc(value || '—')}</p>
+            <p class="mt-1 text-xs muted">${esc(note)}</p>
+          </div>`).join('')}
+      </div>`;
   }
 
   function setProfileEditing(editing) {
@@ -1064,13 +1092,12 @@
     }[profile.goal] || '';
 
     $('#profileSummary').innerHTML = `
-      <div><p class="faint text-xs">Patrón</p><p>${esc(profile.curl_pattern)} · ${esc(PATTERN_LABELS[profile.curl_pattern] || '')}</p></div>
-      <div class="hairline"></div>
-      <div><p class="faint text-xs">Porosidad</p><p>${esc(porosityNote)}</p></div>
-      <div class="hairline"></div>
-      <div><p class="faint text-xs">Grosor</p><p>${esc(THICKNESS_LABELS[profile.thickness] || profile.thickness)} · ${esc(washNote)}</p></div>
-      <div class="hairline"></div>
-      <div><p class="faint text-xs">Objetivo</p><p>${esc(goalNote)}</p></div>`;
+      <div class="space-y-4">
+        <div class="profile-note"><p class="faint text-xs">Patrón</p><p class="mt-1">${esc(profile.curl_pattern)} · ${esc(PATTERN_LABELS[profile.curl_pattern] || '')}</p></div>
+        <div class="profile-note"><p class="faint text-xs">Porosidad</p><p class="mt-1">${esc(porosityNote)}</p></div>
+        <div class="profile-note"><p class="faint text-xs">Grosor</p><p class="mt-1">${esc(THICKNESS_LABELS[profile.thickness] || profile.thickness)} · ${esc(washNote)}</p></div>
+        <div class="profile-note"><p class="faint text-xs">Objetivo</p><p class="mt-1">${esc(goalNote)}</p></div>
+      </div>`;
   }
 
   /* ---------------- Render: Inventario ---------------- */
@@ -2264,7 +2291,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=17');
+        await navigator.serviceWorker.register('./sw.js?v=18');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
