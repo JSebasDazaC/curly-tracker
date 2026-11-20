@@ -92,6 +92,7 @@
     cloud: '<path d="M7 18h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 11a3.5 3.5 0 0 0 1 7Z"/>',
     close: '<path d="M18 6 6 18M6 6l12 12"/>',
     arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    chevron: '<path d="m6 9 6 6 6-6"/>',
     calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>',
     star: '<path d="m12 3 2.9 5.9 6.5 1-4.7 4.6 1.1 6.5L12 18l-5.8 3 1.1-6.5L2.6 9.9l6.5-1Z"/>',
     lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
@@ -159,6 +160,99 @@
 
   function shortCategory(category) {
     return category === 'Tratamiento / Mascarilla' ? 'Tratamiento' : category;
+  }
+
+  /* ---------------- Desplegables personalizados ---------------- */
+  function initSelects(root = document) {
+    $$('select.field', root).forEach((select) => {
+      if (select.dataset.customized === 'true') return;
+      select.dataset.customized = 'true';
+      select.classList.add('native-select');
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'custom-select';
+
+      const trigger = document.createElement('button');
+      trigger.type = 'button';
+      trigger.className = 'select-trigger field';
+      trigger.setAttribute('aria-haspopup', 'listbox');
+      trigger.setAttribute('aria-expanded', 'false');
+
+      const valueNode = document.createElement('span');
+      valueNode.className = 'select-value';
+      const chevron = document.createElement('span');
+      chevron.className = 'select-chevron';
+      chevron.innerHTML = icon('chevron', 'h-4 w-4');
+      trigger.append(valueNode, chevron);
+
+      const menu = document.createElement('div');
+      menu.className = 'select-menu hidden';
+      menu.setAttribute('role', 'listbox');
+      menu.innerHTML = Array.from(select.options).map((option, index) => `
+        <button type="button" class="select-option" role="option" data-index="${index}" data-value="${esc(option.value)}" aria-selected="${option.value === select.value}">
+          <span class="truncate">${esc(option.textContent)}</span>
+          <span class="select-check">${icon('check', 'h-4 w-4')}</span>
+        </button>`).join('');
+
+      select.parentNode.insertBefore(wrapper, select);
+      wrapper.appendChild(select);
+      wrapper.appendChild(trigger);
+      wrapper.appendChild(menu);
+      syncSelect(select);
+    });
+  }
+
+  function syncSelect(select) {
+    const wrapper = select.closest('.custom-select');
+    if (!wrapper) return;
+    const option = select.options[select.selectedIndex];
+    const valueNode = $('.select-value', wrapper);
+    if (valueNode) valueNode.textContent = option ? option.textContent : '';
+    $$('.select-option', wrapper).forEach((item) => {
+      item.setAttribute('aria-selected', String(item.dataset.value === select.value));
+    });
+  }
+
+  function syncAllSelects(root = document) {
+    $$('select.field[data-customized="true"]', root).forEach(syncSelect);
+  }
+
+  function closeAllSelects(except) {
+    $$('.select-trigger[data-open="true"]').forEach((trigger) => {
+      if (trigger === except) return;
+      trigger.dataset.open = 'false';
+      trigger.setAttribute('aria-expanded', 'false');
+      const menu = trigger.nextElementSibling;
+      if (menu && menu.classList.contains('select-menu')) {
+        menu.classList.add('hidden');
+        $$('.select-option', menu).forEach((option) => { option.dataset.focused = 'false'; });
+      }
+    });
+  }
+
+  function toggleSelect(trigger) {
+    const willOpen = trigger.dataset.open !== 'true';
+    closeAllSelects(trigger);
+    trigger.dataset.open = String(willOpen);
+    trigger.setAttribute('aria-expanded', String(willOpen));
+    const menu = trigger.nextElementSibling;
+    if (menu && menu.classList.contains('select-menu')) {
+      menu.classList.toggle('hidden', !willOpen);
+      if (willOpen) {
+        const selected = $('.select-option[aria-selected="true"]', menu);
+        if (selected) selected.dataset.focused = 'true';
+      }
+    }
+  }
+
+  function chooseSelectOption(option) {
+    const wrapper = option.closest('.custom-select');
+    const select = wrapper && $('select', wrapper);
+    if (!select) return;
+    select.value = option.dataset.value;
+    syncSelect(select);
+    closeAllSelects();
+    select.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   function toast(message) {
@@ -633,6 +727,7 @@
     $('#profilePorosity').value = profile.porosity;
     $('#profileThickness').value = profile.thickness;
     $('#profileGoal').value = profile.goal;
+    syncAllSelects();
 
     const washNote = profile.curl_pattern === '4A'
       ? 'Frecuencia de lavado baja: prioriza hidratación intermedia y mascarilla semanal.'
@@ -824,7 +919,8 @@
       <div class="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-[#27272a] bg-[#121214] p-5 shadow-2xl animate-in sm:rounded-2xl sm:p-6">${html}</div>
     </div>`;
     document.body.style.overflow = 'hidden';
-    const firstField = $('input:not([type="hidden"]), select, textarea', root);
+    initSelects(root);
+    const firstField = $('input:not([type="hidden"]), .select-trigger, textarea', root);
     if (firstField) setTimeout(() => firstField.focus(), 60);
   }
 
@@ -1366,6 +1462,14 @@
   document.addEventListener('click', (event) => {
     const target = event.target;
 
+    const selectTrigger = target.closest('.select-trigger');
+    if (selectTrigger) { toggleSelect(selectTrigger); return; }
+
+    const selectOption = target.closest('.select-option');
+    if (selectOption) { chooseSelectOption(selectOption); return; }
+
+    if (!target.closest('.custom-select')) closeAllSelects();
+
     const nav = target.closest('[data-nav]');
     if (nav) { closeModal(); setView(nav.dataset.nav); return; }
 
@@ -1458,11 +1562,40 @@
   });
 
   document.addEventListener('keydown', (event) => {
+    const openTrigger = $('.select-trigger[data-open="true"]');
+    if (openTrigger) {
+      const menu = openTrigger.nextElementSibling;
+      const options = (menu && menu.classList.contains('select-menu')) ? $$('.select-option', menu) : [];
+      const focusedIndex = options.findIndex((option) => option.dataset.focused === 'true');
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeAllSelects();
+        openTrigger.focus();
+        return;
+      }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (!options.length) return;
+        const next = event.key === 'ArrowDown'
+          ? (focusedIndex + 1) % options.length
+          : (focusedIndex <= 0 ? options.length - 1 : focusedIndex - 1);
+        options.forEach((option, index) => { option.dataset.focused = String(index === next); });
+        options[next].scrollIntoView({ block: 'nearest' });
+        return;
+      }
+      if ((event.key === 'Enter' || event.key === ' ') && focusedIndex >= 0) {
+        event.preventDefault();
+        chooseSelectOption(options[focusedIndex]);
+        return;
+      }
+    }
     if (event.key === 'Escape' && $('#modalRoot').innerHTML) closeModal();
   });
 
   function init() {
     ['loginMark', 'sideMark', 'topMark'].forEach((id) => { const node = $('#' + id); if (node) node.innerHTML = curlMark('h-6 w-6'); });
+    initSelects();
     renderNav();
     renderAll();
 
