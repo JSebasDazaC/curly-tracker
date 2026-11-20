@@ -234,6 +234,7 @@
       </div>
 
       <div class="surface p-6 sm:p-8">
+        <div id="authMainPanel">
         <h2 id="authTitle" class="text-xl font-semibold">Bienvenido de nuevo</h2>
         <p id="authSubtitle" class="mt-1.5 text-sm muted">Entra con tu correo, teléfono o red social.</p>
 
@@ -276,7 +277,7 @@
           </div>
 
           <div id="verifyFields" class="hidden">
-            <label class="label" for="authCode">Código de verificación</label>
+            <label class="label" for="authCode">Código SMS</label>
             <input class="field" id="authCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="6" />
             <button id="changeIdentifierBtn" class="mt-2 text-xs muted underline-offset-4 hover:text-white hover:underline" type="button">Usar otro correo o teléfono</button>
           </div>
@@ -293,6 +294,27 @@
         <button id="localModeBtn" class="mt-4 w-full text-center text-xs faint underline-offset-4 hover:text-white hover:underline" type="button">
           Continuar sin cuenta (modo local)
         </button>
+        </div>
+
+        <div id="authLinkSentPanel" hidden>
+          <h2 class="text-xl font-semibold">Revisa tu correo</h2>
+          <p class="mt-1.5 text-sm muted">Te enviamos un enlace de verificación a tu correo. Haz clic en el botón del mensaje para activar tu cuenta</p>
+          <p id="linkSentTarget" class="mt-4 text-sm text-[#fafafa]"></p>
+          <div class="mt-6 flex flex-col gap-2">
+            <button id="resendLinkBtn" class="btn-primary w-full" type="button">Reenviar enlace</button>
+            <button id="changeEmailBtn" class="btn-ghost w-full" type="button">Usar otro correo o teléfono</button>
+          </div>
+          <p id="linkSentError" class="mt-4 hidden text-sm text-[#d4d4d8]"></p>
+        </div>
+
+        <div id="authCallbackPanel" hidden>
+          <div class="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#27272a] bg-[#121214]" id="callbackMark"></div>
+          <h2 id="authCallbackTitle" class="text-xl font-semibold">Verificando el enlace…</h2>
+          <p id="authCallbackMessage" class="mt-1.5 text-sm muted">Estamos activando tu cuenta.</p>
+          <div id="authCallbackActions" class="mt-6 hidden">
+            <button id="authCallbackBackBtn" class="btn-primary w-full" type="button">Volver a iniciar sesión</button>
+          </div>
+        </div>
       </div>
 
       <p class="mt-6 text-center text-xs leading-relaxed text-[#52525b]">

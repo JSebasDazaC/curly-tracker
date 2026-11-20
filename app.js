@@ -12,7 +12,7 @@
 
   const sb = (window.supabase && window.supabase.createClient)
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
       })
     : null;
 
@@ -515,8 +515,10 @@
   let pendingIdentifier = '';
   let pendingKind = 'email';
   let forceProfileSetup = false;
+  let authCallbackError = false;
   let pendingLinkPhone = '';
   const PENDING_PROFILE_KEY = 'curly-pending-profile';
+  const PENDING_SIGNUP_KEY = 'curly-pending-signup';
   let syncState = {
     ready: false,
     session: null,
@@ -1719,7 +1721,7 @@
       node.textContent = 'Escribe un teléfono con código de país (mínimo 8 dígitos).';
       node.className = 'mt-1.5 text-xs faint';
     } else if (detected.kind === 'email') {
-      node.textContent = 'Detectado: correo electrónico. Te enviaremos un código a tu bandeja.';
+      node.textContent = 'Detectado: correo electrónico. Te enviaremos un enlace de verificación.';
       node.className = 'mt-1.5 text-xs hint-ok';
     } else {
       node.textContent = 'Detectado: teléfono. Te enviaremos un código por SMS.';
@@ -1748,29 +1750,36 @@
     node.className = 'mt-1.5 text-xs ' + (ok ? 'hint-ok' : 'hint-error');
   }
 
+  function showAuthPanel(panel) {
+    $('#authMainPanel').hidden = panel !== 'main';
+    $('#authLinkSentPanel').hidden = panel !== 'sent';
+    $('#authCallbackPanel').hidden = panel !== 'callback';
+  }
+
   function renderAuthForm() {
     const signup = authMode === 'signup';
-    const verifying = authStep === 'verify';
+    const sms = authStep === 'sms';
 
-    $('#identifierFields').classList.toggle('hidden', verifying);
-    $('#verifyFields').classList.toggle('hidden', !verifying);
-    $('#authIdentifier').disabled = verifying;
-    $('#authCode').disabled = !verifying;
-    $('#authToggle').classList.toggle('hidden', verifying);
-    $('#localModeBtn').classList.toggle('hidden', verifying);
+    showAuthPanel('main');
+    $('#identifierFields').classList.toggle('hidden', sms);
+    $('#verifyFields').classList.toggle('hidden', !sms);
+    $('#authIdentifier').disabled = sms;
+    $('#authCode').disabled = !sms;
+    $('#authToggle').classList.toggle('hidden', sms);
+    $('#localModeBtn').classList.toggle('hidden', sms);
 
-    $('#authTitle').textContent = verifying
-      ? (signup ? 'Verifica tu cuenta' : 'Verifica tu identidad')
+    $('#authTitle').textContent = sms
+      ? 'Verifica tu teléfono'
       : signup ? 'Crear cuenta' : 'Bienvenido de nuevo';
-    $('#authSubtitle').textContent = verifying
-      ? `Introduce el código que enviamos a ${maskIdentifier(pendingKind, pendingIdentifier)}.`
+    $('#authSubtitle').textContent = sms
+      ? `Introduce el código SMS enviado a ${maskIdentifier('phone', pendingIdentifier)}.`
       : signup
         ? 'Solo necesitas tu correo o teléfono para empezar.'
         : 'Entra con tu correo, teléfono o red social.';
     $('#authToggle').textContent = signup ? '¿Ya tienes cuenta? Entrar' : '¿No tienes cuenta? Crear cuenta';
-    $('#authSubmit').textContent = verifying ? 'Verificar y continuar' : signup ? 'Crear cuenta' : 'Entrar';
+    $('#authSubmit').textContent = sms ? 'Verificar y continuar' : signup ? 'Crear cuenta' : 'Entrar';
 
-    if (!verifying) updateIdentifierHint();
+    if (!sms) updateIdentifierHint();
   }
 
   async function oauthSignIn(provider, label) {
@@ -1781,6 +1790,13 @@
       options: { redirectTo: window.location.origin + window.location.pathname }
     });
     if (error) setAuthError(error.message || `No se pudo iniciar con ${label}`);
+  }
+
+  function showLinkSentPanel(identifier) {
+    showAuthPanel('sent');
+    $('#linkSentTarget').textContent = maskIdentifier('email', identifier);
+    $('#linkSentError').textContent = '';
+    $('#linkSentError').classList.add('hidden');
   }
 
   async function sendCode() {
@@ -1795,30 +1811,41 @@
     pendingKind = detected.kind;
     pendingIdentifier = detected.value;
     forceProfileSetup = authMode === 'signup';
-    const options = { shouldCreateUser: authMode === 'signup' };
+    const options = {
+      shouldCreateUser: authMode === 'signup',
+      emailRedirectTo: window.location.origin + window.location.pathname
+    };
     const payload = detected.kind === 'email'
       ? { email: detected.value, options }
       : { phone: detected.value, options };
     const { error } = await sb.auth.signInWithOtp(payload);
     if (error) {
-      setAuthError(error.message || 'No se pudo enviar el código de verificación.');
+      setAuthError(error.message || (detected.kind === 'email'
+        ? 'No se pudo enviar el enlace de verificación.'
+        : 'No se pudo enviar el código SMS.'));
       return false;
     }
-    authStep = 'verify';
-    renderAuthForm();
-    toast(detected.kind === 'email' ? 'Código enviado a tu correo' : 'Código SMS enviado');
+    if (detected.kind === 'email') {
+      try {
+        if (authMode === 'signup') sessionStorage.setItem(PENDING_SIGNUP_KEY, '1');
+        else sessionStorage.removeItem(PENDING_SIGNUP_KEY);
+      } catch (error) { /* sin sesión */ }
+      authStep = 'link-sent';
+      showLinkSentPanel(detected.value);
+    } else {
+      authStep = 'sms';
+      renderAuthForm();
+      toast('Código SMS enviado');
+    }
     return true;
   }
 
-  async function verifyCode() {
+  async function verifySmsCode() {
     const token = String($('#authCode').value || '').replace(/\D/g, '').slice(0, 6);
     if (token.length !== 6) { setAuthError('Introduce el código de 6 dígitos.'); return; }
     setAuthError('');
     try {
-      const payload = pendingKind === 'email'
-        ? { email: pendingIdentifier, token, type: 'email' }
-        : { phone: pendingIdentifier, token, type: 'sms' };
-      const { data, error } = await sb.auth.verifyOtp(payload);
+      const { data, error } = await sb.auth.verifyOtp({ phone: pendingIdentifier, token, type: 'sms' });
       if (error) throw error;
       authStep = 'identify';
       pendingIdentifier = '';
@@ -1828,6 +1855,80 @@
     } catch (error) {
       setAuthError(error && error.message ? error.message : 'No se pudo verificar el código.');
     }
+  }
+
+  function authErrorText(code) {
+    const value = String(code || '').toLowerCase();
+    if (value.includes('expired') || value.includes('caduc')) {
+      return 'El enlace ha caducado. Solicita uno nuevo para continuar.';
+    }
+    return 'No pudimos verificar el enlace. Solicita uno nuevo para continuar.';
+  }
+
+  function showAuthCallbackPanel(title, message, isError) {
+    showAuthPanel('callback');
+    $('#authCallbackTitle').textContent = title;
+    $('#authCallbackMessage').textContent = message;
+    $('#authCallbackActions').hidden = !isError;
+    const mark = $('#callbackMark');
+    if (mark) mark.innerHTML = curlMark('h-6 w-6');
+  }
+
+  async function handleAuthRedirect() {
+    if (!sb) return false;
+    const params = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const get = (key) => params.get(key) || hash.get(key);
+    const errorCode = get('error_code') || get('error');
+    const tokenHash = get('token_hash');
+    const type = get('type');
+    const accessToken = hash.get('access_token');
+    const refreshToken = hash.get('refresh_token');
+    const code = params.get('code');
+
+    if (!errorCode && !tokenHash && !accessToken && !code) return false;
+
+    const cleanUrl = () => {
+      const url = new URL(window.location.href);
+      url.search = '';
+      url.hash = '';
+      window.history.replaceState({}, document.title, url.pathname);
+    };
+
+    showAuthCallbackPanel('Verificando el enlace…', 'Estamos activando tu cuenta.', false);
+    let failureCode = errorCode;
+    try {
+      if (errorCode) throw new Error(authErrorText(errorCode));
+      let session = null;
+      if (tokenHash && type) {
+        const { data, error } = await sb.auth.verifyOtp({ token_hash: tokenHash, type });
+        if (error) throw error;
+        session = data.session;
+      } else if (accessToken) {
+        const { data, error } = await sb.auth.setSession({ access_token: accessToken, refresh_token: refreshToken || '' });
+        if (error) throw error;
+        session = data.session;
+      } else if (code) {
+        const { data, error } = await sb.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+        session = data.session;
+      }
+      if (!session) throw new Error('No se pudo completar la verificación.');
+      try {
+        forceProfileSetup = sessionStorage.getItem(PENDING_SIGNUP_KEY) === '1';
+        sessionStorage.removeItem(PENDING_SIGNUP_KEY);
+      } catch (error) { /* sin sesión */ }
+      cleanUrl();
+      showAuthPanel('main');
+      await enterWithSession(session);
+    } catch (error) {
+      cleanUrl();
+      failureCode = failureCode || (error && (error.code || error.message));
+      authCallbackError = true;
+      showLogin();
+      showAuthCallbackPanel('No pudimos verificar el enlace', authErrorText(failureCode), true);
+    }
+    return true;
   }
 
   async function applyAuthMetadata(session) {
@@ -2068,11 +2169,13 @@
       return;
     }
     const { data } = await sb.auth.getSession();
-    if (data && data.session) await enterWithSession(data.session);
+    if (authCallbackError) showLogin();
+    else if (data && data.session) await enterWithSession(data.session);
     else showLogin();
 
     sb.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
+        authCallbackError = false;
         enterWithSession(session);
       } else if (event === 'SIGNED_OUT') {
         unsubscribeRealtime();
@@ -2478,21 +2581,51 @@
       pendingIdentifier = '';
       pendingKind = 'email';
       forceProfileSetup = false;
+      try { sessionStorage.removeItem(PENDING_SIGNUP_KEY); } catch (error) { /* sin sesión */ }
       setAuthError('');
       renderAuthForm();
     });
 
     $('#authIdentifier').addEventListener('input', updateIdentifierHint);
 
-    $('#changeIdentifierBtn').addEventListener('click', () => {
+    const backToIdentify = () => {
       authStep = 'identify';
       pendingIdentifier = '';
       pendingKind = 'email';
       forceProfileSetup = false;
+      authCallbackError = false;
+      try { sessionStorage.removeItem(PENDING_SIGNUP_KEY); } catch (error) { /* sin sesión */ }
       $('#authCode').value = '';
+      $('#authIdentifier').value = '';
       setAuthError('');
       renderAuthForm();
-      $('#authIdentifier').focus();
+    };
+
+    $('#changeIdentifierBtn').addEventListener('click', () => { backToIdentify(); $('#authIdentifier').focus(); });
+    $('#changeEmailBtn').addEventListener('click', () => { backToIdentify(); $('#authIdentifier').focus(); });
+    $('#authCallbackBackBtn').addEventListener('click', backToIdentify);
+
+    $('#resendLinkBtn').addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      const errorNode = $('#linkSentError');
+      errorNode.classList.add('hidden');
+      button.disabled = true;
+      button.textContent = 'Enviando…';
+      try {
+        const ok = await sendCode();
+        if (!ok) {
+          errorNode.textContent = $('#authError').textContent || 'No se pudo reenviar el enlace.';
+          errorNode.classList.remove('hidden');
+        } else {
+          toast('Enlace reenviado a tu correo');
+        }
+      } catch (error) {
+        errorNode.textContent = 'No se pudo reenviar el enlace.';
+        errorNode.classList.remove('hidden');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Reenviar enlace';
+      }
     });
 
     $('#authForm').addEventListener('submit', async (event) => {
@@ -2501,15 +2634,15 @@
       if (!sb) { setAuthError('Supabase no está disponible. Usa el modo local.'); return; }
       const submit = $('#authSubmit');
       submit.disabled = true;
-      submit.textContent = authStep === 'verify' ? 'Verificando…' : 'Enviando…';
+      submit.textContent = authStep === 'sms' ? 'Verificando…' : 'Enviando…';
       try {
         if (authStep === 'identify') await sendCode();
-        else await verifyCode();
+        else await verifySmsCode();
       } catch (error) {
         setAuthError(error && error.message ? error.message : 'No se pudo completar la acción.');
       } finally {
         submit.disabled = false;
-        renderAuthForm();
+        if (authStep !== 'link-sent') renderAuthForm();
       }
     });
 
@@ -2532,7 +2665,7 @@
     Notifications.start();
     startCrossDeviceSync();
     renderAuthForm();
-    initAuth();
+    handleAuthRedirect().then(() => initAuth());
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
