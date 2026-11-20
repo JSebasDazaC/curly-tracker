@@ -1097,6 +1097,16 @@
     updateHeroImages();
   }
 
+  function fitInlineInput(input) {
+    if (input.tagName === 'INPUT') {
+      const length = (input.value || input.placeholder || '').length;
+      input.size = Math.max(8, Math.min(length + 1, input.maxLength || 80));
+    } else if (input.tagName === 'TEXTAREA') {
+      input.style.height = 'auto';
+      input.style.height = Math.max(input.scrollHeight, 38) + 'px';
+    }
+  }
+
   function beginInlineEdit(node) {
     if (inlineEdit) cancelInlineEdit();
     const field = node.dataset.inlineField;
@@ -1140,6 +1150,10 @@
     wrap.append(input, actions);
     node.innerHTML = '';
     node.appendChild(wrap);
+    if (meta.type !== 'select') {
+      fitInlineInput(input);
+      input.addEventListener('input', () => fitInlineInput(input));
+    }
 
     inlineEdit = { field, node, input, original, originalHtml };
     input.focus();
@@ -2676,7 +2690,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=28');
+        await navigator.serviceWorker.register('./sw.js?v=29');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);

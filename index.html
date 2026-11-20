@@ -244,13 +244,14 @@
     @media (hover: none) { .inline-editable::after { opacity: .55; } }
     .inline-editable.inline-editing { background: transparent; box-shadow: none; }
     .inline-editable.inline-editing::after { content: none; }
-    .inline-edit-wrap { display: inline-flex; width: 100%; max-width: 100%; align-items: center; gap: 6px; }
+    .inline-edit-wrap { display: inline-flex; max-width: 100%; align-items: center; gap: 6px; }
     .inline-input {
-      display: inline-block; flex: 1 1 auto; width: auto; min-width: 6ch; max-width: 100%;
-      padding: 0 2px; border: 0; border-bottom: 1px solid #a1a1aa;
+      display: inline-block; flex: 0 1 auto; width: auto; min-width: 8ch; max-width: 100%;
+      padding: 2px 6px; border: 1px solid #a1a1aa; border-radius: 6px;
       background: transparent; color: inherit; font: inherit; line-height: inherit; outline: none;
+      field-sizing: content;
     }
-    textarea.inline-input { width: 100%; resize: none; min-height: 3.2em; }
+    textarea.inline-input { min-width: 16ch; resize: none; min-height: 2.4em; }
     .inline-actions { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; vertical-align: middle; }
     .inline-actions button {
       display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center;
@@ -685,6 +686,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js?v=28"></script>
+  <script src="./app.js?v=29"></script>
 </body>
 </html>
