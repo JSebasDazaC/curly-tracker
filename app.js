@@ -1675,7 +1675,9 @@
   function detectIdentifier(raw) {
     const value = String(raw || '').trim();
     if (!value) return { kind: '', value: '', invalid: false };
-    if (value.includes('@')) {
+    // Cualquier letra (o una @) significa correo, incluso si todavía está incompleto.
+    // Así el teclado no salta a numérico mientras se escribe la primera parte del email.
+    if (value.includes('@') || /[a-z]/i.test(value)) {
       const email = value.toLowerCase();
       const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
       return { kind: 'email', value: email, invalid: !valid };
@@ -1697,24 +1699,31 @@
   function updateIdentifierHint() {
     const node = $('#authIdentifierHint');
     if (!node) return;
-    const detected = detectIdentifier($('#authIdentifier').value);
+    const raw = $('#authIdentifier').value;
+    const detected = detectIdentifier(raw);
     const input = $('#authIdentifier');
+    // Solo pedir teclado numérico cuando el texto ya es claramente un teléfono.
+    const looksLikePhone = detected.kind === 'phone' && !/[a-z]/i.test(raw) && raw.replace(/\D/g, '').length >= 6;
+    const mode = looksLikePhone ? 'tel' : 'email';
+    if (input.inputMode !== mode) input.inputMode = mode;
+
     if (!detected.value) {
       node.textContent = 'Escribe un correo o un teléfono con código de país. Lo detectaremos solos.';
       node.className = 'mt-1.5 text-xs faint';
-      input.inputMode = 'email';
-    } else if (detected.invalid) {
-      node.textContent = 'Revisa el correo o escribe un teléfono con código de país (mínimo 8 dígitos).';
-      node.className = 'mt-1.5 text-xs hint-error';
-      input.inputMode = detected.kind === 'email' ? 'email' : 'tel';
+    } else if (detected.kind === 'email' && detected.invalid) {
+      node.textContent = detected.value.includes('@')
+        ? 'Sigue escribiendo: añade el dominio (ej. @gmail.com).'
+        : 'Detectado: correo. Añade @ y el dominio para continuar.';
+      node.className = 'mt-1.5 text-xs faint';
+    } else if (detected.kind === 'phone' && detected.invalid) {
+      node.textContent = 'Escribe un teléfono con código de país (mínimo 8 dígitos).';
+      node.className = 'mt-1.5 text-xs faint';
     } else if (detected.kind === 'email') {
       node.textContent = 'Detectado: correo electrónico. Te enviaremos un código a tu bandeja.';
       node.className = 'mt-1.5 text-xs hint-ok';
-      input.inputMode = 'email';
     } else {
       node.textContent = 'Detectado: teléfono. Te enviaremos un código por SMS.';
       node.className = 'mt-1.5 text-xs hint-ok';
-      input.inputMode = 'tel';
     }
   }
 
