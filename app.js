@@ -1612,7 +1612,7 @@
     },
     async send(title, body) {
       if (this.permission() !== 'granted') return;
-      const options = { body, icon: './icon.svg', tag: 'curly-tracker', renotify: true };
+      const options = { body, icon: './icon.svg?v=5', tag: 'curly-tracker', renotify: true };
       try {
         const registration = ('serviceWorker' in navigator) ? await navigator.serviceWorker.ready : null;
         if (registration && registration.showNotification) await registration.showNotification(title, options);

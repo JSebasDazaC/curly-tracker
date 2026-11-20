@@ -1,6 +1,6 @@
 /* Curly Tracker · Service Worker
    Caché básica offline + notificaciones locales y push. */
-const CACHE = 'curly-tracker-v4';
+const CACHE = 'curly-tracker-v5';
 const SCOPE = self.registration.scope;
 
 const LOCAL_ASSETS = [
@@ -8,9 +8,9 @@ const LOCAL_ASSETS = [
   './index.html',
   './app.js',
   './manifest.json',
-  './icon.svg',
-  './icon-192.png',
-  './icon-512.png'
+  './icon.svg?v=5',
+  './icon-192.png?v=5',
+  './icon-512.png?v=5'
 ];
 
 const REMOTE_ASSETS = [
@@ -116,8 +116,8 @@ function minutesFromTime(time) {
 async function showNotification(title, options) {
   if (self.Notification && Notification.permission === 'granted') {
     await self.registration.showNotification(title, Object.assign({
-      icon: new URL('./icon.svg', SCOPE).href,
-      badge: new URL('./icon.svg', SCOPE).href,
+      icon: new URL('./icon.svg?v=5', SCOPE).href,
+      badge: new URL('./icon.svg?v=5', SCOPE).href,
       tag: 'curly-tracker-daily',
       renotify: true
     }, options || {}));
