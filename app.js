@@ -1895,10 +1895,10 @@
   async function verifyEmailCode() {
     if (!sb) { setOtpError(AUTH_UNAVAILABLE); return; }
     const input = $('#authOtpCode');
-    const token = String(input.value || '').replace(/\D/g, '').slice(0, 10);
+    const token = String(input.value || '').replace(/\D/g, '').slice(0, 6);
     input.value = token;
-    if (token.length < 6 || token.length > 10) {
-      setOtpError('Escribe el código completo.');
+    if (token.length !== 6) {
+      setOtpError('Escribe los 6 dígitos del código.');
       return;
     }
     if (!pendingIdentifier) {
@@ -2210,7 +2210,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=13');
+        await navigator.serviceWorker.register('./sw.js?v=14');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
