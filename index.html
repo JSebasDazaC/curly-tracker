@@ -233,7 +233,7 @@
 
       <div class="surface p-6 sm:p-8">
         <h2 id="authTitle" class="text-xl font-semibold">Bienvenido de nuevo</h2>
-        <p id="authSubtitle" class="mt-1.5 text-sm muted">Entra para sincronizar tu perfil, inventario y rutina.</p>
+        <p id="authSubtitle" class="mt-1.5 text-sm muted">Entra con tu correo, teléfono o red social.</p>
 
         <div class="oauth-list">
           <button id="googleBtn" class="btn-ghost w-full" type="button">
@@ -262,73 +262,21 @@
 
         <div class="my-6 flex items-center gap-3">
           <span class="h-px flex-1 bg-[#27272a]"></span>
-          <span class="text-[11px] uppercase tracking-[.18em] text-[#71717a]">o con email o teléfono</span>
+          <span class="text-[11px] uppercase tracking-[.18em] text-[#71717a]">o con correo o teléfono</span>
           <span class="h-px flex-1 bg-[#27272a]"></span>
         </div>
 
-        <div id="authMethodTabs" class="seg mb-5">
-          <button class="auth-tab" type="button" data-auth-method="email" data-active="true">Email</button>
-          <button class="auth-tab" type="button" data-auth-method="phone" data-active="false">Teléfono</button>
-        </div>
-
-        <div id="signupFields" class="mb-5 hidden space-y-4">
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label class="label" for="authFirstName">Nombre</label>
-              <input class="field" id="authFirstName" type="text" autocomplete="given-name" placeholder="Sebastián" />
-            </div>
-            <div>
-              <label class="label" for="authLastName">Apellido</label>
-              <input class="field" id="authLastName" type="text" autocomplete="family-name" placeholder="Daza" />
-            </div>
-          </div>
-          <div>
-            <label class="label" for="authUsername">Usuario único</label>
-            <input class="field" id="authUsername" type="text" autocomplete="username" placeholder="sebasdaza" maxlength="20" />
-            <p id="authUsernameStatus" class="mt-1.5 text-xs faint">3–20 caracteres: letras, números, punto o guion bajo.</p>
-          </div>
-          <div>
-            <label class="label" for="authDisplayName">Nombre a mostrar</label>
-            <input class="field" id="authDisplayName" type="text" placeholder="Como te verán los demás" maxlength="50" />
-            <p class="mt-1.5 text-xs faint">Puede ser distinto de tu usuario y cambiar la tipografía.</p>
-          </div>
-          <div>
-            <label class="label" for="authDisplayStyle">Estilo del nombre</label>
-            <select class="field" id="authDisplayStyle">
-              <option value="normal">Normal · Outfit</option>
-              <option value="bold">Negrita</option>
-              <option value="italic">Cursiva</option>
-              <option value="serif">Serif elegante</option>
-              <option value="mono">Monoespacio</option>
-              <option value="wide">Espaciado y ligero</option>
-              <option value="script">Manuscrita</option>
-            </select>
-          </div>
-        </div>
-
         <form id="authForm" novalidate>
-          <div id="emailFields" class="space-y-4">
-            <div>
-              <label class="label" for="authEmail">Email</label>
-              <input class="field" id="authEmail" type="email" autocomplete="email" placeholder="tu@email.com" />
-            </div>
-            <div>
-              <label class="label" for="authPassword">Contraseña</label>
-              <input class="field" id="authPassword" type="password" autocomplete="current-password" placeholder="Mínimo 6 caracteres" minlength="6" />
-            </div>
+          <div id="identifierFields">
+            <label class="label" for="authIdentifier">Correo o teléfono</label>
+            <input class="field" id="authIdentifier" type="text" autocomplete="username" inputmode="email" placeholder="tu@email.com o +57 300 123 4567" />
+            <p id="authIdentifierHint" class="mt-1.5 text-xs faint">Escribe un correo o un teléfono con código de país. Lo detectaremos solos.</p>
           </div>
 
-          <div id="phoneFields" class="hidden space-y-4">
-            <div id="phoneRequest">
-              <label class="label" for="authPhone">Teléfono</label>
-              <input class="field" id="authPhone" type="tel" autocomplete="tel" placeholder="+57 300 123 4567" />
-              <p class="mt-1.5 text-xs faint">Incluye el código de tu país. Te enviaremos un código por SMS.</p>
-            </div>
-            <div id="phoneVerify" class="hidden">
-              <label class="label" for="authCode">Código SMS</label>
-              <input class="field" id="authCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="6" />
-              <button id="changePhoneBtn" class="mt-2 text-xs muted underline-offset-4 hover:text-white hover:underline" type="button">Cambiar número</button>
-            </div>
+          <div id="verifyFields" class="hidden">
+            <label class="label" for="authCode">Código de verificación</label>
+            <input class="field" id="authCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="6" />
+            <button id="changeIdentifierBtn" class="mt-2 text-xs muted underline-offset-4 hover:text-white hover:underline" type="button">Usar otro correo o teléfono</button>
           </div>
 
           <button id="authSubmit" class="btn-primary mt-6 w-full" type="submit">Entrar</button>
