@@ -1,0 +1,52 @@
+{
+  "name": "Curly Tracker · Control capilar",
+  "short_name": "Curly Tracker",
+  "description": "Perfil de rizo, inventario inteligente y rutina semanal adaptativa para el cuidado capilar masculino.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "lang": "es",
+  "categories": ["health", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mi rutina de hoy",
+      "short_name": "Hoy",
+      "url": "./?view=hoy"
+    },
+    {
+      "name": "Inventario",
+      "short_name": "Inventario",
+      "url": "./?view=inventario"
+    }
+  ]
+}

@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#09090b" />
+  <meta name="description" content="Control capilar masculino: perfil de rizo, inventario inteligente y rutina semanal adaptativa." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Curly Tracker · Tu rutina capilar</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Outfit', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root { color-scheme: dark; }
+    * { -webkit-tap-highlight-color: transparent; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Outfit', sans-serif; background: #09090b; color: #fafafa; letter-spacing: -0.01em; }
+    ::selection { background: #fafafa; color: #09090b; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #09090b; }
+    ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+
+    .surface { background: #121214; border: 1px solid #27272a; border-radius: 20px; }
+    .surface-flat { background: #09090b; border: 1px solid #27272a; border-radius: 14px; }
+    .btn-primary {
+      background: #fafafa; color: #09090b; border-radius: 12px; font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 11px 18px; transition: transform .15s ease, opacity .15s ease, background .15s ease;
+    }
+    .btn-primary:hover { background: #e4e4e7; }
+    .btn-primary:active { transform: scale(.98); }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent; color: #a1a1aa; border: 1px solid #27272a; border-radius: 12px;
+      font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 16px; transition: color .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .btn-ghost:hover { color: #fafafa; border-color: #52525b; background: #18181b; }
+    .btn-ghost:active { transform: scale(.98); }
+    .field {
+      width: 100%; background: #09090b; border: 1px solid #27272a; border-radius: 12px;
+      color: #fafafa; padding: 11px 14px; font-size: 15px; outline: none;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .field:focus { border-color: #a1a1aa; box-shadow: 0 0 0 3px rgba(250,250,250,.06); }
+    .field::placeholder { color: #52525b; }
+    select.field { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+    input[type="date"].field::-webkit-calendar-picker-indicator { filter: invert(1); opacity: .55; }
+    .label { display: block; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #a1a1aa; font-weight: 600; margin-bottom: 8px; }
+    .muted { color: #a1a1aa; }
+    .faint { color: #71717a; }
+    .hairline { height: 1px; background: #27272a; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px; border-radius: 999px;
+      border: 1px solid #27272a; color: #d4d4d8; background: #09090b;
+      padding: 5px 10px; font-size: 12px; line-height: 1.2;
+    }
+    .chip-warn { border-color: #52525b; color: #fafafa; background: #18181b; }
+    .chip-ok { border-color: #3f3f46; color: #a1a1aa; }
+    .seg { display: grid; grid-auto-flow: column; gap: 4px; background: #09090b; border: 1px solid #27272a; border-radius: 12px; padding: 4px; }
+    .seg-btn { border-radius: 9px; padding: 9px 10px; font-size: 13px; color: #a1a1aa; text-align: center; transition: .15s ease; }
+    .seg-btn:hover { color: #fafafa; }
+    .seg-btn[data-active="true"] { background: #fafafa; color: #09090b; font-weight: 600; }
+    .nav-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+      color: #71717a; font-size: 11px; font-weight: 500; flex: 1; padding: 8px 2px;
+      transition: color .15s ease;
+    }
+    .nav-btn[data-active="true"] { color: #fafafa; }
+    .side-btn {
+      display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 13px;
+      border-radius: 12px; color: #a1a1aa; font-size: 14px; font-weight: 500; transition: .15s ease;
+    }
+    .side-btn:hover { color: #fafafa; background: #18181b; }
+    .side-btn[data-active="true"] { color: #fafafa; background: rgba(250,250,250,.10); font-weight: 600; }
+    .badge-dot { width: 7px; height: 7px; border-radius: 999px; background: #71717a; display: inline-block; }
+    .badge-dot[data-online="true"] { background: #fafafa; box-shadow: 0 0 0 3px rgba(250,250,250,.10); }
+    .animate-in { animation: fadeUp .28s ease both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .pulse-ring { animation: pulse 2.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity: .35; transform: scale(1); } 50% { opacity: .8; transform: scale(1.08); } }
+    .modal-backdrop { background: rgba(9,9,11,.82); backdrop-filter: blur(6px); }
+    .toast { animation: toastIn .25s ease both; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+    .scroll-x { scrollbar-width: none; }
+    .scroll-x::-webkit-scrollbar { display: none; }
+    .safe-bottom { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+    @media (min-width: 1024px) { .safe-bottom { padding-bottom: 48px; } }
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+
+  <!-- ===================== LOGIN ===================== -->
+  <div id="loginScreen" class="flex min-h-screen items-center justify-center px-5 py-12">
+    <div class="w-full max-w-md animate-in">
+      <div class="mb-9 flex items-center gap-3">
+        <div class="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#27272a] bg-[#121214]" id="loginMark"></div>
+        <div>
+          <h1 class="text-2xl font-semibold tracking-tight">Curly Tracker</h1>
+          <p class="text-sm muted">Tu rutina capilar, bajo control.</p>
+        </div>
+      </div>
+
+      <div class="surface p-6 sm:p-8">
+        <h2 id="authTitle" class="text-xl font-semibold">Bienvenido de nuevo</h2>
+        <p id="authSubtitle" class="mt-1.5 text-sm muted">Entra para sincronizar tu perfil, inventario y rutina.</p>
+
+        <button id="googleBtn" class="btn-ghost mt-7 w-full" type="button">
+          <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" aria-hidden="true">
+            <path fill="#fafafa" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3Z"/>
+            <path fill="#a1a1aa" d="M12 22c2.7 0 5-.9 6.6-2.5l-3.2-2.5c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.7-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22Z"/>
+            <path fill="#71717a" d="M6.4 13.8A6 6 0 0 1 6.3 12c0-.6.1-1.2.1-1.8V7.6H3.1a10 10 0 0 0 0 8.8l3.3-2.6Z"/>
+            <path fill="#52525b" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.6l3.3 2.6C7.2 7.6 9.4 5.9 12 5.9Z"/>
+          </svg>
+          <span>Continuar con Google</span>
+        </button>
+
+        <div class="my-6 flex items-center gap-3">
+          <span class="h-px flex-1 bg-[#27272a]"></span>
+          <span class="text-[11px] uppercase tracking-[.18em] text-[#71717a]">o con email</span>
+          <span class="h-px flex-1 bg-[#27272a]"></span>
+        </div>
+
+        <form id="authForm" novalidate>
+          <div class="space-y-4">
+            <div>
+              <label class="label" for="authEmail">Email</label>
+              <input class="field" id="authEmail" type="email" autocomplete="email" placeholder="tu@email.com" required />
+            </div>
+            <div>
+              <label class="label" for="authPassword">Contraseña</label>
+              <input class="field" id="authPassword" type="password" autocomplete="current-password" placeholder="Mínimo 6 caracteres" required minlength="6" />
+            </div>
+          </div>
+          <button id="authSubmit" class="btn-primary mt-6 w-full" type="submit">Entrar</button>
+        </form>
+
+        <p id="authError" class="mt-4 hidden text-sm text-[#d4d4d8]"></p>
+
+        <div class="hairline my-6"></div>
+        <button id="authToggle" class="w-full text-center text-sm muted underline-offset-4 hover:text-white hover:underline" type="button">
+          ¿No tienes cuenta? Crear cuenta
+        </button>
+        <button id="localModeBtn" class="mt-4 w-full text-center text-xs faint underline-offset-4 hover:text-white hover:underline" type="button">
+          Continuar sin cuenta (modo local)
+        </button>
+      </div>
+
+      <p class="mt-6 text-center text-xs leading-relaxed text-[#52525b]">
+        Modo local disponible sin cuenta · Datos guardados en este dispositivo
+      </p>
+    </div>
+  </div>
+
+  <!-- ===================== APP SHELL ===================== -->
+  <div id="appShell" class="hidden lg:grid lg:min-h-screen lg:grid-cols-[264px_minmax(0,1fr)]">
+    <!-- Sidebar -->
+    <aside class="sticky top-0 hidden h-screen flex-col border-r border-[#27272a] bg-[#09090b] px-5 py-7 lg:flex">
+      <div class="flex items-center gap-3 px-2">
+        <div id="sideMark" class="flex h-10 w-10 items-center justify-center rounded-xl border border-[#27272a] bg-[#121214]"></div>
+        <div>
+          <p class="text-base font-semibold leading-tight">Curly Tracker</p>
+          <p class="text-xs faint">Male hair care</p>
+        </div>
+      </div>
+
+      <p class="label mt-10 px-3">Navegación</p>
+      <nav class="mt-2 space-y-1" aria-label="Navegación principal">
+        <button class="side-btn" type="button" data-nav="hoy"><span data-nav-icon="hoy"></span>Hoy</button>
+        <button class="side-btn" type="button" data-nav="perfil"><span data-nav-icon="perfil"></span>Mi perfil capilar</button>
+        <button class="side-btn" type="button" data-nav="inventario"><span data-nav-icon="inventario"></span>Inventario</button>
+        <button class="side-btn" type="button" data-nav="rutina"><span data-nav-icon="rutina"></span>Rutina semanal</button>
+        <button class="side-btn" type="button" data-nav="ajustes"><span data-nav-icon="ajustes"></span>Ajustes</button>
+      </nav>
+
+      <div class="mt-auto">
+        <div class="surface p-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs faint">Sincronización</span>
+            <span class="badge-dot" id="sideSyncDot"></span>
+          </div>
+          <p id="sideSyncLabel" class="mt-2 text-sm">Modo local</p>
+          <p class="mt-1 text-xs faint">Tus cambios se guardan al instante.</p>
+        </div>
+        <div class="mt-4 flex items-center gap-3 px-2">
+          <div id="sideAvatar" class="flex h-9 w-9 items-center justify-center rounded-full border border-[#27272a] bg-[#121214] text-sm font-semibold">C</div>
+          <div class="min-w-0 flex-1">
+            <p id="sideEmail" class="truncate text-xs muted">Invitado</p>
+            <p class="text-[11px] faint">Sesión activa</p>
+          </div>
+          <button id="sideSignOut" class="text-xs faint hover:text-white" type="button">Salir</button>
+        </div>
+      </div>
+    </aside>
+
+    <div class="flex min-h-screen flex-col">
+      <!-- Mobile / tablet header -->
+      <header class="sticky top-0 z-30 border-b border-[#27272a] bg-[#09090b]/90 backdrop-blur-xl lg:hidden">
+        <div class="flex h-16 items-center justify-between px-4 sm:px-6">
+          <div class="flex items-center gap-2.5">
+            <div id="topMark" class="flex h-9 w-9 items-center justify-center rounded-xl border border-[#27272a] bg-[#121214]"></div>
+            <div>
+              <p class="text-sm font-semibold leading-tight">Curly Tracker</p>
+              <p id="topSubtitle" class="text-[11px] faint">Hoy</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="badge-dot" id="topSyncDot" title="Estado de sincronización"></span>
+            <div id="topAvatar" class="flex h-8 w-8 items-center justify-center rounded-full border border-[#27272a] bg-[#121214] text-xs font-semibold">C</div>
+          </div>
+        </div>
+      </header>
+
+      <main class="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 safe-bottom sm:px-6 lg:px-10 lg:pt-10">
+        <!-- HOY -->
+        <section id="view-hoy" data-view="hoy" class="animate-in">
+          <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p id="todayDate" class="text-xs uppercase tracking-[.16em] faint"></p>
+              <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Hoy</h1>
+            </div>
+            <button id="openLogBtn" class="btn-primary" type="button">Registrar mi día</button>
+          </div>
+          <div id="todayContent" class="space-y-5"></div>
+        </section>
+
+        <!-- PERFIL -->
+        <section id="view-perfil" data-view="perfil" class="hidden animate-in">
+          <div class="mb-6">
+            <p class="text-xs uppercase tracking-[.16em] faint">Módulo 01</p>
+            <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Mi perfil capilar</h1>
+            <p class="mt-2 max-w-2xl text-sm muted">Define tus bases. El horario y las recomendaciones se recalculan automáticamente con estos datos.</p>
+          </div>
+          <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div class="surface p-5 sm:p-6">
+              <div class="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label class="label" for="profilePattern">Patrón de rizo</label>
+                  <select class="field" id="profilePattern">
+                    <option value="2C">2C · Ondas definidas</option>
+                    <option value="3A">3A · Rizos sueltos</option>
+                    <option value="3B">3B · Rizos medianos</option>
+                    <option value="3C">3C · Rizos apretados</option>
+                    <option value="4A">4A · Rizos muy apretados</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="label" for="profilePorosity">Porosidad</label>
+                  <select class="field" id="profilePorosity">
+                    <option value="baja">Baja · Absorbe despacio</option>
+                    <option value="media">Media · Equilibrada</option>
+                    <option value="alta">Alta · Absorbe rápido</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="label" for="profileThickness">Grosor del cabello</label>
+                  <select class="field" id="profileThickness">
+                    <option value="fino">Fino</option>
+                    <option value="medio">Medio</option>
+                    <option value="grueso">Grueso</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="label" for="profileGoal">Objetivo actual</label>
+                  <select class="field" id="profileGoal">
+                    <option value="frizz">Control de frizz</option>
+                    <option value="definicion">Definición</option>
+                    <option value="encogimiento">Controlar encogimiento</option>
+                    <option value="salud">Salud general</option>
+                  </select>
+                </div>
+              </div>
+              <div class="hairline my-6"></div>
+              <div class="flex flex-wrap items-center justify-between gap-4">
+                <p class="text-xs faint">Los cambios se guardan y sincronizan automáticamente.</p>
+                <button id="saveProfileBtn" class="btn-primary" type="button">Guardar perfil</button>
+              </div>
+            </div>
+            <div class="space-y-5">
+              <div class="surface p-5">
+                <p class="label">Tu lectura capilar</p>
+                <div id="profileSummary" class="space-y-3 text-sm"></div>
+              </div>
+              <div class="surface p-5">
+                <p class="label">Cómo se usa</p>
+                <p class="text-sm leading-relaxed muted">Tu patrón decide la frecuencia de lavado y las técnicas. La porosidad ajusta hidratación y sellado. El objetivo prioriza ciertos pasos del horario.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- INVENTARIO -->
+        <section id="view-inventario" data-view="inventario" class="hidden animate-in">
+          <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p class="text-xs uppercase tracking-[.16em] faint">Módulo 02</p>
+              <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Inventario inteligente</h1>
+              <p class="mt-2 max-w-2xl text-sm muted">Solo marcas lo que tienes. El horario se adapta a tu botín real.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="addToolBtn" class="btn-ghost" type="button">+ Herramienta</button>
+              <button id="addProductBtn" class="btn-primary" type="button">+ Producto</button>
+            </div>
+          </div>
+
+          <div class="surface overflow-hidden">
+            <div id="categoryTabs" class="scroll-x flex gap-1 overflow-x-auto border-b border-[#27272a] px-2 py-2"></div>
+            <div id="productList" class="divide-y divide-[#27272a]"></div>
+          </div>
+
+          <div class="mt-5 surface p-5 sm:p-6">
+            <div class="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p class="label">Herramientas</p>
+                <p class="text-sm muted">Marca las que tienes disponibles. Las nueve primeras son esenciales.</p>
+              </div>
+              <span id="toolsCount" class="text-xs faint"></span>
+            </div>
+            <div id="toolsList" class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3"></div>
+          </div>
+        </section>
+
+        <!-- RUTINA -->
+        <section id="view-rutina" data-view="rutina" class="hidden animate-in">
+          <div class="mb-6">
+            <p class="text-xs uppercase tracking-[.16em] faint">Módulo 03</p>
+            <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Horario inteligente</h1>
+            <p class="mt-2 max-w-2xl text-sm muted">Una semana calculada con tu perfil y, únicamente, con lo que tienes.</p>
+          </div>
+          <div id="weekStrip" class="scroll-x mb-5 flex gap-2 overflow-x-auto pb-1"></div>
+          <div id="routineList" class="space-y-4"></div>
+          <p id="routineNote" class="mt-5 text-xs leading-relaxed faint"></p>
+        </section>
+
+        <!-- AJUSTES -->
+        <section id="view-ajustes" data-view="ajustes" class="hidden animate-in">
+          <div class="mb-6">
+            <p class="text-xs uppercase tracking-[.16em] faint">Preferencias</p>
+            <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Ajustes</h1>
+          </div>
+          <div class="grid gap-5 lg:grid-cols-2">
+            <div class="surface p-5 sm:p-6">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <p class="text-base font-semibold">Recordatorio diario</p>
+                  <p class="mt-1.5 text-sm muted">Aviso local con el plan del día y tus productos disponibles.</p>
+                </div>
+                <div id="notifIcon" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#27272a] bg-[#09090b]"></div>
+              </div>
+              <div class="hairline my-5"></div>
+              <div id="permissionBox" class="surface-flat p-4 text-sm">
+                <p class="font-medium">Permiso de notificaciones</p>
+                <p id="permissionStatus" class="mt-1 text-xs muted">Comprobando…</p>
+                <button id="askPermissionBtn" class="btn-ghost mt-3" type="button">Activar notificaciones</button>
+              </div>
+              <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="label" for="reminderTime">Hora del recordatorio</label>
+                  <input class="field" id="reminderTime" type="time" value="08:00" />
+                </div>
+                <div>
+                  <span class="label">Estado</span>
+                  <div class="seg" id="reminderToggle">
+                    <button class="seg-btn" type="button" data-value="on">Activado</button>
+                    <button class="seg-btn" type="button" data-value="off">Desactivado</button>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-5 flex flex-wrap gap-2">
+                <button id="saveNotifBtn" class="btn-primary" type="button">Guardar horario</button>
+                <button id="testNotifBtn" class="btn-ghost" type="button">Enviar prueba</button>
+              </div>
+            </div>
+
+            <div class="space-y-5">
+              <div class="surface p-5 sm:p-6">
+                <p class="text-base font-semibold">Cuenta y sincronización</p>
+                <div class="mt-5 space-y-3 text-sm">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="muted">Estado</span>
+                    <span id="cloudStatus" class="flex items-center gap-2">Modo local</span>
+                  </div>
+                  <div class="hairline"></div>
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="muted">Email</span>
+                    <span id="accountEmail" class="truncate">Invitado</span>
+                  </div>
+                  <div class="hairline"></div>
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="muted">Dispositivo</span>
+                    <span id="deviceLabel">Web</span>
+                  </div>
+                </div>
+                <div class="mt-6 flex flex-wrap gap-2">
+                  <button id="forceSyncBtn" class="btn-ghost" type="button">Sincronizar ahora</button>
+                  <button id="signOutBtn" class="btn-ghost" type="button">Cerrar sesión</button>
+                </div>
+              </div>
+              <div class="surface p-5 sm:p-6">
+                <p class="text-base font-semibold">Datos</p>
+                <p class="mt-1.5 text-sm muted">Puedes exportar una copia JSON o borrar los datos de este dispositivo.</p>
+                <div class="mt-5 flex flex-wrap gap-2">
+                  <button id="exportBtn" class="btn-ghost" type="button">Exportar JSON</button>
+                  <button id="resetLocalBtn" class="btn-ghost" type="button">Borrar datos locales</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Bottom navigation -->
+      <nav class="fixed inset-x-0 bottom-0 z-40 border-t border-[#27272a] bg-[#09090b]/95 backdrop-blur-xl lg:hidden" style="padding-bottom: env(safe-area-inset-bottom, 0px);" aria-label="Navegación móvil">
+        <div class="mx-auto flex max-w-lg px-2 py-1.5">
+          <button class="nav-btn" type="button" data-nav="hoy"><span data-nav-icon="hoy"></span><span>Hoy</span></button>
+          <button class="nav-btn" type="button" data-nav="perfil"><span data-nav-icon="perfil"></span><span>Perfil</span></button>
+          <button class="nav-btn" type="button" data-nav="inventario"><span data-nav-icon="inventario"></span><span>Inv.</span></button>
+          <button class="nav-btn" type="button" data-nav="rutina"><span data-nav-icon="rutina"></span><span>Rutina</span></button>
+          <button class="nav-btn" type="button" data-nav="ajustes"><span data-nav-icon="ajustes"></span><span>Ajustes</span></button>
+        </div>
+      </nav>
+    </div>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
