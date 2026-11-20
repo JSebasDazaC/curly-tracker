@@ -237,6 +237,16 @@
       field-sizing: content;
     }
     textarea.inline-input { min-width: 16ch; resize: none; min-height: 2.4em; }
+    .inline-edit-wrap .custom-select { flex: 0 1 auto; min-width: 8ch; max-width: 100%; }
+    .inline-edit-wrap .select-trigger {
+      width: auto; min-width: 8ch; max-width: 100%;
+      padding: 2px 7px; border: 2px solid rgba(161,161,170,.72); border-radius: 7px;
+      background: transparent; font: inherit; line-height: inherit;
+    }
+    .inline-edit-wrap .select-trigger:hover,
+    .inline-edit-wrap .select-trigger[data-open="true"] { border-color: rgba(161,161,170,.72); }
+    .inline-edit-wrap .select-menu { left: 0; right: auto; min-width: 100%; }
+    .inline-edit-wrap .select-option { font-size: inherit; }
     .inline-actions { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; vertical-align: middle; }
     .inline-actions button {
       display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center;
@@ -658,6 +668,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="./supabase.js?v=32"></script>
-  <script src="./app.js?v=35"></script>
+  <script src="./app.js?v=36"></script>
 </body>
 </html>

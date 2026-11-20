@@ -1136,7 +1136,7 @@
       input.value = original;
       input.maxLength = meta.max || 80;
     }
-    input.className = 'inline-input';
+    input.className = meta.type === 'select' ? 'field' : 'inline-input';
     input.setAttribute('aria-label', meta.label);
     if (meta.placeholder) input.placeholder = meta.placeholder;
 
@@ -1146,16 +1146,23 @@
     wrap.append(input, actions);
     node.innerHTML = '';
     node.appendChild(wrap);
-    if (meta.type !== 'select') {
+
+    let focusNode = input;
+    if (meta.type === 'select') {
+      initSelects(wrap);
+      focusNode = $('.select-trigger', wrap) || input;
+    } else {
       fitInlineInput(input);
       input.addEventListener('input', () => fitInlineInput(input));
     }
 
     inlineEdit = { field, node, input, original, originalHtml };
-    input.focus();
+    focusNode.focus();
     if (input.select) input.select();
-    input.addEventListener('blur', () => { if (inlineEdit && inlineEdit.input === input) commitInlineEdit(); });
-    input.addEventListener('keydown', (event) => {
+    if (meta.type !== 'select') {
+      input.addEventListener('blur', () => { if (inlineEdit && inlineEdit.input === input) commitInlineEdit(); });
+    }
+    focusNode.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') { event.preventDefault(); cancelInlineEdit(); }
       else if (event.key === 'Enter' && (meta.type !== 'textarea' || event.ctrlKey || event.metaKey)) {
         event.preventDefault();
@@ -2689,7 +2696,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=35');
+        await navigator.serviceWorker.register('./sw.js?v=36');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
