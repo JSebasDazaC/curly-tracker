@@ -1032,6 +1032,10 @@
     return `<span class="inline-editable ${cls}" ${inlineAttrs(field)}>${meta.prefix ? esc(meta.prefix) : ''}${content}</span>`;
   }
 
+  function inlineSelectText(field, value) {
+    return `<span class="inline-editable inline-select" ${inlineAttrs(field)}>${esc(value || '—')}<span class="inline-select-chevron">${icon('chevron', 'h-3.5 w-3.5')}</span></span>`;
+  }
+
   function updateHeroImages() {
     const holder = $('#socialProfileCard');
     if (!holder) return;
@@ -1140,23 +1144,32 @@
     input.setAttribute('aria-label', meta.label);
     if (meta.placeholder) input.placeholder = meta.placeholder;
 
-    const actions = document.createElement('span');
-    actions.className = 'inline-actions';
-    actions.innerHTML = `<button type="button" data-inline-save title="Guardar" aria-label="Guardar">${icon('check', 'h-3.5 w-3.5')}</button><button type="button" data-inline-cancel title="Cancelar" aria-label="Cancelar">${icon('close', 'h-3.5 w-3.5')}</button>`;
-    wrap.append(input, actions);
+    const actions = meta.type === 'select' ? null : document.createElement('span');
+    if (actions) {
+      actions.className = 'inline-actions';
+      actions.innerHTML = `<button type="button" data-inline-save title="Guardar" aria-label="Guardar">${icon('check', 'h-3.5 w-3.5')}</button><button type="button" data-inline-cancel title="Cancelar" aria-label="Cancelar">${icon('close', 'h-3.5 w-3.5')}</button>`;
+    }
+    if (actions) wrap.append(input, actions);
+    else wrap.appendChild(input);
     node.innerHTML = '';
     node.appendChild(wrap);
 
     let focusNode = input;
+    let cleanup = null;
     if (meta.type === 'select') {
       initSelects(wrap);
       focusNode = $('.select-trigger', wrap) || input;
+      const onOutside = (event) => {
+        if (inlineEdit && inlineEdit.input === input && !wrap.contains(event.target)) cancelInlineEdit();
+      };
+      document.addEventListener('pointerdown', onOutside);
+      cleanup = () => document.removeEventListener('pointerdown', onOutside);
     } else {
       fitInlineInput(input);
       input.addEventListener('input', () => fitInlineInput(input));
     }
 
-    inlineEdit = { field, node, input, original, originalHtml };
+    inlineEdit = { field, node, input, original, originalHtml, cleanup };
     focusNode.focus();
     if (input.select) input.select();
     if (meta.type !== 'select') {
@@ -1170,15 +1183,18 @@
       }
     });
     if (meta.type === 'select') input.addEventListener('change', () => commitInlineEdit());
-    const saveBtn = $('[data-inline-save]', actions);
-    const cancelBtn = $('[data-inline-cancel]', actions);
-    saveBtn.addEventListener('mousedown', (event) => event.preventDefault());
-    cancelBtn.addEventListener('mousedown', (event) => event.preventDefault());
-    saveBtn.addEventListener('click', () => commitInlineEdit());
-    cancelBtn.addEventListener('click', cancelInlineEdit);
+    if (actions) {
+      const saveBtn = $('[data-inline-save]', actions);
+      const cancelBtn = $('[data-inline-cancel]', actions);
+      saveBtn.addEventListener('mousedown', (event) => event.preventDefault());
+      cancelBtn.addEventListener('mousedown', (event) => event.preventDefault());
+      saveBtn.addEventListener('click', () => commitInlineEdit());
+      cancelBtn.addEventListener('click', cancelInlineEdit);
+    }
   }
 
   function restoreInlineNode(edit) {
+    if (edit.cleanup) edit.cleanup();
     edit.node.innerHTML = edit.originalHtml;
     edit.node.classList.remove('inline-editing');
   }
@@ -1260,7 +1276,7 @@
               ${icon(glyph, 'h-4 w-4')}
               <span class="text-[11px] uppercase tracking-wider">${esc(label)}</span>
             </div>
-            <p class="profile-feature-value"><span class="inline-editable" ${inlineAttrs(field)}>${esc(value || '—')}</span></p>
+            <p class="profile-feature-value">${inlineSelectText(field, value)}</p>
             <p class="mt-1 text-xs muted">${esc(note)}</p>
           </div>`).join('')}
       </div>`;
@@ -2696,7 +2712,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=36');
+        await navigator.serviceWorker.register('./sw.js?v=37');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
