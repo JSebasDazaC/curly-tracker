@@ -2605,7 +2605,7 @@
     $('#changeEmailBtn').addEventListener('click', () => { backToIdentify(); $('#authIdentifier').focus(); });
     $('#authCallbackBackBtn').addEventListener('click', backToIdentify);
 
-    $('#resendLinkBtn').addEventListener('click', async (event) => {
+    $('#reenviarLinkBtn').addEventListener('click', async (event) => {
       const button = event.currentTarget;
       const errorNode = $('#linkSentError');
       errorNode.classList.add('hidden');
