@@ -223,6 +223,58 @@
     .file-input { display: none; }
     .hint-ok { color: #a1a1aa; }
     .hint-error { color: #fafafa; }
+
+    /* Accesos vinculados */
+    .provider-mark {
+      display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center;
+      border: 1px solid #3f3f46; border-radius: 5px; background: #09090b;
+      font-size: 11px; font-weight: 700; line-height: 1; color: #fafafa;
+    }
+    .provider-mark-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; padding: 3px; }
+    .provider-mark-grid i { display: block; border-radius: 1px; background: currentColor; }
+
+    /* Mini tarjeta de perfil en la barra lateral */
+    .side-mini-profile { transition: border-color .15s ease, background .15s ease, transform .15s ease; }
+    .side-mini-profile:hover { border-color: #3f3f46; background: #18181b; }
+    .side-mini-profile:active { transform: scale(.99); }
+    .side-mini-profile .mini-arrow { transition: transform .15s ease; }
+    .side-mini-profile:hover .mini-arrow { transform: translateX(2px); }
+
+    /* Inventario visual */
+    .kit-icon, .product-icon {
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      border: 1px solid #27272a; background: #09090b; color: #d4d4d8;
+    }
+    .kit-icon { width: 42px; height: 42px; border-radius: 12px; }
+    .product-icon { width: 44px; height: 44px; border-radius: 14px; }
+    .kit-switch {
+      width: 44px; height: 24px; padding: 2px; border-radius: 999px; flex-shrink: 0;
+      border: 1px solid #3f3f46; background: #09090b; display: flex; align-items: center;
+      justify-content: flex-start; transition: background .2s ease, border-color .2s ease;
+    }
+    .kit-switch[data-on="true"] { justify-content: flex-end; background: #27272a; border-color: #52525b; }
+    .kit-switch-thumb {
+      width: 18px; height: 18px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+      background: #71717a; color: #09090b; transition: background .2s ease;
+    }
+    .kit-switch[data-on="true"] .kit-switch-thumb { background: #fafafa; }
+    .status-dial { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 58px; flex-shrink: 0; }
+    .status-dial-track {
+      width: 46px; height: 26px; padding: 3px; border-radius: 999px; display: flex; align-items: center;
+      border: 1px solid #3f3f46; background: #09090b; transition: background .2s ease, border-color .2s ease;
+    }
+    .status-dial[data-state="ready"] .status-dial-track { justify-content: flex-end; background: #27272a; border-color: #52525b; }
+    .status-dial[data-state="low"] .status-dial-track { justify-content: center; background: #18181b; }
+    .status-dial[data-state="missing"] .status-dial-track { justify-content: flex-start; background: #18181b; }
+    .status-dial-thumb {
+      width: 18px; height: 18px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+      background: #a1a1aa; color: #09090b;
+    }
+    .status-dial[data-state="ready"] .status-dial-thumb,
+    .status-dial[data-state="missing"] .status-dial-thumb { background: #fafafa; }
+    .status-dial-label { font-size: 10px; line-height: 1; letter-spacing: .04em; color: #a1a1aa; }
+    .inventory-meter { display: flex; height: 6px; border-radius: 999px; background: #27272a; overflow: hidden; }
+    .inventory-meter > span { display: block; height: 100%; }
   </style>
 </head>
 <body class="min-h-screen antialiased">
@@ -352,8 +404,15 @@
         <button class="side-btn" type="button" data-nav="ajustes"><span data-nav-icon="ajustes"></span>Ajustes</button>
       </nav>
 
-      <div class="mt-auto px-2">
-        <button id="sideAvatar" class="top-avatar flex h-10 w-10 items-center justify-center rounded-full border border-[#27272a] bg-[#121214] text-sm font-semibold" type="button" data-nav="perfil" aria-label="Abrir mi perfil" title="Mi perfil">C</button>
+      <div class="mt-auto px-1">
+        <button id="sideMiniProfile" class="side-mini-profile group flex w-full items-center gap-3 rounded-2xl border border-[#27272a] bg-[#121214] p-2.5 text-left" type="button" data-nav="perfil" aria-label="Abrir mi perfil" title="Mi perfil">
+          <span id="sideAvatar" class="top-avatar flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#27272a] bg-[#18181b] text-xs font-semibold">C</span>
+          <span class="min-w-0 flex-1">
+            <span id="sideMiniName" class="block truncate text-xs font-semibold text-[#fafafa]">Invitado</span>
+            <span id="sideMiniHandle" class="mt-0.5 block truncate text-[10px] faint">Mi perfil</span>
+          </span>
+          <span class="mini-arrow shrink-0 faint"><span data-nav-icon="chevron" class="block h-4 w-4 [&>svg]:h-4 [&>svg]:w-4"></span></span>
+        </button>
       </div>
     </aside>
 
@@ -412,6 +471,13 @@
               </div>
             </div>
             <p id="accountHint" class="mt-3 text-xs faint"></p>
+            <div class="hairline my-5"></div>
+            <div>
+              <p class="label">Accesos vinculados</p>
+              <p class="mt-1 text-xs muted">Entra con el método que te resulte más rápido.</p>
+              <div id="connectionsList" class="mt-3 flex flex-wrap gap-2"></div>
+              <p id="connectionsHint" class="mt-2 text-[11px] faint"></p>
+            </div>
           </div>
 
           <div class="grid gap-5">
@@ -554,6 +620,8 @@
             </div>
           </div>
 
+          <div id="inventorySummary" class="mb-5"></div>
+
           <div class="surface overflow-hidden">
             <div id="categoryTabs" class="scroll-x flex gap-1 overflow-x-auto border-b border-[#27272a] px-2 py-2"></div>
             <div id="statusTabs" class="scroll-x flex gap-1 overflow-x-auto border-b border-[#27272a] px-2 py-2"></div>
@@ -563,8 +631,8 @@
           <div class="mt-5 surface p-5 sm:p-6">
             <div class="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p class="label">Herramientas</p>
-                <p class="text-sm muted">Marca las que tienes disponibles. Las nueve primeras son esenciales.</p>
+                <p class="label">Kits y herramientas</p>
+                <p class="text-sm muted">Activa lo que tienes a mano. Lo esencial aparece primero.</p>
               </div>
               <span id="toolsCount" class="text-xs faint"></span>
             </div>
@@ -652,6 +720,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js?v=21"></script>
+  <script src="./app.js?v=22"></script>
 </body>
 </html>

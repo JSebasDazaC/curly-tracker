@@ -38,6 +38,27 @@
     { value: STATUSES[2], label: 'Lista de compra' }
   ];
 
+  const CATEGORY_ICONS = {
+    'Shampoo': 'bottle',
+    'Acondicionador': 'bottle',
+    'Tratamiento / Mascarilla': 'jar',
+    'Crema de peinar': 'tube',
+    'Aceite': 'dropper',
+    'Gel': 'dropper'
+  };
+
+  const STATUS_META = [
+    { state: 'ready', label: 'Listo', icon: 'check' },
+    { state: 'low', label: 'Bajando', icon: 'alert' },
+    { state: 'missing', label: 'Falta', icon: 'plus' }
+  ];
+
+  const LINK_PROVIDERS = [
+    { id: 'google', label: 'Google', mark: 'G' },
+    { id: 'azure', label: 'Microsoft', mark: 'M' },
+    { id: 'facebook', label: 'Facebook', mark: 'f' }
+  ];
+
   const PRESET_TOOLS = [
     'Cepillo definidor de 9 hileras tipo Denman',
     'Cepillo flexible desenredante',
@@ -100,11 +121,43 @@
     chevron: '<path d="m6 9 6 6 6-6"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
     calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>',
-    star: '<path d="m12 3 2.9 5.9 6.5 1-4.7 4.6 1.1 6.5L12 18l-5.8 3 1.1-6.5L2.6 9.9l6.5-1Z"/>'
+    star: '<path d="m12 3 2.9 5.9 6.5 1-4.7 4.6 1.1 6.5L12 18l-5.8 3 1.1-6.5L2.6 9.9l6.5-1Z"/>',
+    bottle: '<path d="M9 3h6v3l2 3v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9l2-3V3Z"/><path d="M7 13h10"/>',
+    jar: '<rect x="5" y="8" width="14" height="12" rx="2"/><path d="M7 8V5h10v3M8 13h8"/>',
+    tube: '<path d="M9 3h6l2 16H7L9 3Z"/><path d="M8 9h8"/>',
+    dropper: '<path d="M9 4h6v4l3 4v7a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-7l3-4V4Z"/><path d="M10 4V2h4v2M9 14h6"/>',
+    brush: '<path d="m4 20 6-2 9-9-4-4-9 9-2 6Z"/><path d="m14 6 4 4M10 14l4 4"/>',
+    comb: '<path d="M4 7h16"/><path d="M6 7v10M10 7v10M14 7v10M18 7v10"/>',
+    spray: '<path d="M8 10h7v10H8z"/><path d="M11 10V6h5v2M18 4h.01M20 7h.01"/>',
+    cap: '<path d="M4 13a8 8 0 0 1 16 0v2H4v-2Z"/><path d="M7 15v4M17 15v4"/>'
   };
 
   function icon(name, cls = 'h-5 w-5') {
     return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+  }
+
+  function categoryIcon(category) {
+    return CATEGORY_ICONS[category] || 'drop';
+  }
+
+  function toolIcon(name) {
+    const value = String(name || '').toLowerCase();
+    if (value.includes('cepillo')) return 'brush';
+    if (value.includes('peine') || value.includes('peineta')) return 'comb';
+    if (value.includes('atomizador')) return 'spray';
+    if (value.includes('gorro') || value.includes('funda')) return 'cap';
+    return 'tool';
+  }
+
+  function statusMeta(status) {
+    const index = Math.max(0, STATUSES.indexOf(status));
+    return STATUS_META[index] || STATUS_META[0];
+  }
+
+  function providerMark(id) {
+    if (id === 'azure') return '<span class="provider-mark provider-mark-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
+    const glyph = id === 'facebook' ? 'f' : 'G';
+    return `<span class="provider-mark" aria-hidden="true">${glyph}</span>`;
   }
 
   function curlMark(cls = 'h-6 w-6') {
@@ -526,7 +579,10 @@
     errorShown: false,
     channel: null,
     remoteTimer: null,
-    lastPull: 0
+    lastPull: 0,
+    identities: [],
+    connectionsFor: null,
+    connectionsLoading: false
   };
   let lastEnteredUser = null;
 
@@ -1030,10 +1086,34 @@
     renderProfileHero();
     renderAccount();
     renderSyncStatus();
+    refreshConnections();
   }
 
   /* ---------------- Render: Inventario ---------------- */
   function renderInventory() {
+    const meters = ['#fafafa', '#a1a1aa', '#52525b'];
+    const statusCounts = STATUSES.map((status, index) => ({
+      label: STATUS_META[index].label,
+      count: state.products.filter((product) => product.status === status).length,
+      color: meters[index]
+    }));
+    const total = state.products.length || 1;
+    $('#inventorySummary').innerHTML = `
+      <div class="surface p-4 sm:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p class="label">Lo que tienes a mano</p>
+            <p class="mt-1 text-xs muted">${state.products.length ? `${state.products.length} productos en tu inventario` : 'Tu inventario está vacío'}</p>
+          </div>
+          <div class="flex flex-wrap gap-3 text-[11px] faint">
+            ${statusCounts.map((item) => `<span class="flex items-center gap-1.5"><span class="badge-dot" style="background:${item.color}"></span>${item.label} ${item.count}</span>`).join('')}
+          </div>
+        </div>
+        <div class="inventory-meter mt-4">
+          ${statusCounts.map((item) => `<span style="width:${item.count / total * 100}%;background:${item.color}"></span>`).join('')}
+        </div>
+      </div>`;
+
     $('#categoryTabs').innerHTML = CATEGORIES.map((category) => {
       const count = state.products.filter((product) => product.category === category).length;
       return `<button class="shrink-0 rounded-xl px-3.5 py-2 text-sm transition ${currentCategory === category ? 'bg-[#fafafa] font-semibold text-[#09090b]' : 'text-[#a1a1aa] hover:text-white'}" type="button" data-category="${esc(category)}">${esc(shortCategory(category))}<span class="ml-1.5 text-xs opacity-60">${count}</span></button>`;
@@ -1047,25 +1127,33 @@
     $('#productList').innerHTML = list.length
       ? list.map((product) => {
           const compatibility = evaluateProduct(product, state.profile);
-          const statusClass = product.status === STATUSES[2] ? 'chip-warn' : 'chip-ok';
+          const meta = statusMeta(product.status);
           return `<article class="p-4 sm:p-5">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <p class="truncate font-medium">${esc(product.name)}</p>
-                <p class="mt-0.5 truncate text-xs faint">${esc(product.brand || 'Sin marca')} · ${esc(shortCategory(product.category))}</p>
-              </div>
-              <div class="flex shrink-0 gap-1">
-                <button class="rounded-lg p-2 muted hover:bg-[#18181b] hover:text-white" type="button" data-edit-product="${esc(product.id)}" aria-label="Editar producto">${icon('edit', 'h-4 w-4')}</button>
-                <button class="rounded-lg p-2 muted hover:bg-[#18181b] hover:text-white" type="button" data-delete-product="${esc(product.id)}" aria-label="Eliminar producto">${icon('trash', 'h-4 w-4')}</button>
+            <div class="flex items-start gap-3">
+              <div class="product-icon">${icon(categoryIcon(product.category), 'h-5 w-5')}</div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="truncate font-medium">${esc(product.name)}</p>
+                    <p class="mt-0.5 truncate text-xs faint">${esc(product.brand || 'Sin marca')} · ${esc(shortCategory(product.category))}</p>
+                  </div>
+                  <div class="flex shrink-0 gap-1">
+                    <button class="rounded-lg p-2 muted hover:bg-[#18181b] hover:text-white" type="button" data-edit-product="${esc(product.id)}" aria-label="Editar producto">${icon('edit', 'h-4 w-4')}</button>
+                    <button class="rounded-lg p-2 muted hover:bg-[#18181b] hover:text-white" type="button" data-delete-product="${esc(product.id)}" aria-label="Eliminar producto">${icon('trash', 'h-4 w-4')}</button>
+                  </div>
+                </div>
+                <div class="mt-3 flex items-center justify-between gap-3">
+                  <span class="chip ${compatibility.ok ? 'chip-ok' : 'chip-warn'}">${icon(compatibility.ok ? 'check' : 'alert', 'h-3.5 w-3.5')}${compatibility.ok ? 'Apto para tus rizos' : 'Precaución / Reseca'}</span>
+                  <button class="status-dial" type="button" data-cycle-status="${esc(product.id)}" data-state="${meta.state}" aria-label="Estado: ${meta.label}. Toca para cambiar" title="Toca para cambiar el estado">
+                    <span class="status-dial-track"><span class="status-dial-thumb">${icon(meta.icon, 'h-3.5 w-3.5')}</span></span>
+                    <span class="status-dial-label">${meta.label}</span>
+                  </button>
+                </div>
+                ${product.ingredients.length ? `<div class="mt-3 flex flex-wrap gap-1.5">${product.ingredients.map((item) => `<span class="chip">${esc(item)}</span>`).join('')}</div>` : ''}
+                ${product.notes ? `<p class="mt-3 text-xs faint">${esc(product.notes)}</p>` : ''}
+                ${compatibility.notes.length ? `<details class="mt-3"><summary class="cursor-pointer text-xs muted hover:text-white">Ver análisis de compatibilidad</summary><ul class="mt-2 space-y-1 text-xs faint">${compatibility.notes.map((note) => `<li>· ${esc(note)}</li>`).join('')}</ul></details>` : ''}
               </div>
             </div>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <button class="chip ${statusClass}" type="button" data-cycle-status="${esc(product.id)}" title="Toca para cambiar el estado">${esc(product.status)}</button>
-              <span class="chip ${compatibility.ok ? 'chip-ok' : 'chip-warn'}">${icon(compatibility.ok ? 'check' : 'alert', 'h-3.5 w-3.5')}${compatibility.ok ? 'Apto para tus rizos' : 'Precaución / Reseca'}</span>
-            </div>
-            ${product.ingredients.length ? `<div class="mt-3 flex flex-wrap gap-1.5">${product.ingredients.map((item) => `<span class="chip">${esc(item)}</span>`).join('')}</div>` : ''}
-            ${product.notes ? `<p class="mt-3 text-xs faint">${esc(product.notes)}</p>` : ''}
-            ${compatibility.notes.length ? `<details class="mt-3"><summary class="cursor-pointer text-xs muted hover:text-white">Ver análisis de compatibilidad</summary><ul class="mt-2 space-y-1 text-xs faint">${compatibility.notes.map((note) => `<li>· ${esc(note)}</li>`).join('')}</ul></details>` : ''}
           </article>`;
         }).join('')
       : `<div class="px-5 py-12 text-center">
@@ -1075,16 +1163,22 @@
           <button class="btn-ghost mt-4" type="button" data-add-product="${esc(currentCategory)}">${icon('plus', 'h-4 w-4')}Añadir producto</button>
         </div>`;
 
-    $('#toolsCount').textContent = `${state.tools.filter((tool) => tool.owned).length} / ${state.tools.length} disponibles`;
-    $('#toolsList').innerHTML = state.tools.map((tool) => `
-      <div class="surface-flat flex items-center gap-3 p-3.5">
-        <button class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition ${tool.owned ? 'border-[#fafafa] bg-[#fafafa] text-[#09090b]' : 'border-[#3f3f46] text-transparent'}" type="button" data-toggle-tool="${esc(tool.id)}" aria-label="${tool.owned ? 'Marcar como no disponible' : 'Marcar como disponible'}">${icon('check', 'h-4 w-4')}</button>
-        <button class="min-w-0 flex-1 text-left" type="button" data-toggle-tool="${esc(tool.id)}">
-          <span class="block truncate text-sm ${tool.owned ? 'text-[#fafafa]' : 'muted'}">${esc(tool.name)}</span>
-          <span class="text-[11px] faint">${tool.owned ? 'Lo tengo' : 'No lo tengo'}${tool.preset ? ' · esencial' : ''}</span>
-        </button>
+    const ownedTools = state.tools.filter((tool) => tool.owned).length;
+    $('#toolsCount').textContent = `${ownedTools} / ${state.tools.length} en tu kit`;
+    $('#toolsList').innerHTML = state.tools.map((tool) => {
+      const owned = Boolean(tool.owned);
+      return `<div class="surface-flat flex items-center gap-3 p-3.5">
+        <div class="kit-icon ${owned ? 'text-[#fafafa]' : ''}">${icon(toolIcon(tool.name), 'h-5 w-5')}</div>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm ${owned ? 'text-[#fafafa]' : 'muted'}">${esc(tool.name)}</p>
+          <p class="mt-0.5 text-[11px] faint">${owned ? 'En tu kit' : 'Falta en tu kit'}${tool.preset ? ' · esencial' : ''}</p>
+        </div>
         ${tool.preset ? '' : `<button class="shrink-0 rounded-lg p-2 faint hover:text-white" type="button" data-delete-tool="${esc(tool.id)}" aria-label="Eliminar herramienta">${icon('trash', 'h-4 w-4')}</button>`}
-      </div>`).join('');
+        <button class="kit-switch" type="button" data-toggle-tool="${esc(tool.id)}" data-on="${owned}" role="switch" aria-checked="${owned}" aria-label="${owned ? 'Quitar de tu kit' : 'Añadir a tu kit'}">
+          <span class="kit-switch-thumb">${icon(owned ? 'check' : 'plus', 'h-3 w-3')}</span>
+        </button>
+      </div>`;
+    }).join('');
   }
 
   /* ---------------- Render: Rutina ---------------- */
@@ -1209,6 +1303,11 @@
       ? 'Tus cambios se sincronizan con tu cuenta.'
       : 'Estás en modo local. Inicia sesión para sincronizar entre dispositivos.';
 
+    const nameNode = $('#sideMiniName');
+    if (nameNode) nameNode.textContent = displayName();
+    const handleNode = $('#sideMiniHandle');
+    if (handleNode) handleNode.textContent = state.profile.username ? `@${state.profile.username}` : 'Mi perfil';
+
     const initial = avatarInitial();
     const avatarUrl = state.profile.avatar_url;
     ['sideAvatar', 'topAvatar'].forEach((id) => {
@@ -1224,6 +1323,100 @@
         node.textContent = initial;
       }
     });
+    renderConnections();
+  }
+
+  function renderConnections() {
+    const holder = $('#connectionsList');
+    if (!holder) return;
+    const hint = $('#connectionsHint');
+    const user = syncState.session && syncState.session.user ? syncState.session.user : null;
+
+    if (!user) {
+      holder.innerHTML = '<span class="text-xs faint">Inicia sesión para ver tus accesos.</span>';
+      if (hint) hint.textContent = '';
+      return;
+    }
+    if (syncState.connectionsLoading) {
+      holder.innerHTML = '<span class="text-xs faint">Cargando accesos…</span>';
+      if (hint) hint.textContent = '';
+      return;
+    }
+
+    const linked = new Set((syncState.identities || []).map((item) => item.provider).filter(Boolean));
+    const chips = [`<span class="chip chip-ok">${icon('check', 'h-3.5 w-3.5')}Correo</span>`];
+    LINK_PROVIDERS.forEach((provider) => {
+      if (linked.has(provider.id)) {
+        chips.push(`<span class="chip chip-ok">${providerMark(provider.id)}${provider.label}${icon('check', 'h-3.5 w-3.5')}</span>`);
+      } else {
+        chips.push(`<button class="chip" type="button" data-link-provider="${provider.id}">${providerMark(provider.id)}Vincular ${provider.label}${icon('plus', 'h-3.5 w-3.5')}</button>`);
+      }
+    });
+    holder.innerHTML = chips.join('');
+    if (hint) hint.textContent = linked.size > 1
+      ? 'Puedes entrar con cualquiera de estos accesos.'
+      : 'Vincula otro acceso para entrar más rápido.';
+  }
+
+  async function refreshConnections(force = false) {
+    const user = syncState.session && syncState.session.user ? syncState.session.user : null;
+    if (!sb || !user) {
+      syncState.identities = [];
+      syncState.connectionsFor = null;
+      renderConnections();
+      return;
+    }
+    if (!force && syncState.connectionsFor === user.id) {
+      renderConnections();
+      return;
+    }
+
+    syncState.connectionsLoading = true;
+    renderConnections();
+    let errorMessage = '';
+    try {
+      const { data, error } = await sb.auth.getUserIdentities();
+      if (error) throw error;
+      syncState.identities = (data && data.identities) || [];
+      syncState.connectionsFor = user.id;
+    } catch (error) {
+      syncState.identities = [];
+      syncState.connectionsFor = null;
+      errorMessage = 'No pudimos cargar tus accesos. Inténtalo de nuevo más tarde.';
+    } finally {
+      syncState.connectionsLoading = false;
+      renderConnections();
+      const hint = $('#connectionsHint');
+      if (hint && errorMessage) hint.textContent = errorMessage;
+    }
+  }
+
+  async function linkProvider(providerId) {
+    const provider = LINK_PROVIDERS.find((item) => item.id === providerId);
+    if (!provider) return;
+    const user = syncState.session && syncState.session.user ? syncState.session.user : null;
+    if (!sb || !user) { showLogin(); return; }
+
+    saveReturnTab();
+    toast(`Abriendo ${provider.label}…`);
+    try {
+      const { data, error } = await sb.auth.linkIdentity({
+        provider: provider.id,
+        options: { redirectTo: window.location.origin + window.location.pathname }
+      });
+      if (error) throw error;
+      if (data && data.url && /^https?:/i.test(data.url)) {
+        window.location.assign(data.url);
+        return;
+      }
+      await refreshConnections(true);
+      toast(`${provider.label} vinculado`);
+    } catch (error) {
+      const message = String(error && error.message || '').toLowerCase();
+      toast(message.includes('manual linking') || message.includes('linking is not enabled')
+        ? 'Activa la vinculación manual en Supabase para conectar este acceso.'
+        : `No se pudo vincular ${provider.label}. Vuelve a intentarlo.`);
+    }
   }
 
   /* ---------------- Modales ---------------- */
@@ -1473,6 +1666,7 @@
     syncState.session = session || null;
     renderSyncStatus();
     renderAccount();
+    refreshConnections();
   }
 
   function mapProfile(row) {
@@ -2022,6 +2216,7 @@
       clearAuthUrl();
       showAuthPanel('main');
       await enterWithSession(session);
+      await refreshConnections(true);
       restoreReturnTab(returnTab);
     } catch (error) {
       clearAuthUrl();
@@ -2221,6 +2416,7 @@
       if (event === 'SIGNED_IN' && session) {
         authCallbackError = false;
         enterWithSession(session);
+        refreshConnections(true);
         if (hasReturnTab()) restoreReturnTab();
       } else if (event === 'SIGNED_OUT') {
         unsubscribeRealtime();
@@ -2240,7 +2436,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=21');
+        await navigator.serviceWorker.register('./sw.js?v=22');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
@@ -2384,6 +2580,9 @@
 
     const editProfile = target.closest('[data-action="edit-profile"]');
     if (editProfile) { setProfileEditing(true); return; }
+
+    const linkProviderBtn = target.closest('[data-link-provider]');
+    if (linkProviderBtn) { linkProvider(linkProviderBtn.dataset.linkProvider); return; }
 
     const nav = target.closest('[data-nav]');
     if (nav) { closeModal(); setView(nav.dataset.nav); return; }
