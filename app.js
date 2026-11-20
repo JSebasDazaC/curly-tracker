@@ -63,17 +63,12 @@
     alta: 'Alta (absorbe rápido)'
   };
   const THICKNESS_LABELS = { fino: 'Fino', medio: 'Medio', grueso: 'Grueso' };
-  const DISPLAY_STYLE_LABELS = {
-    normal: 'Normal', bold: 'Negrita', italic: 'Cursiva', serif: 'Serif elegante',
-    mono: 'Monoespacio', wide: 'Espaciado y ligero', script: 'Manuscrita'
-  };
   const GOAL_LABELS = {
     frizz: 'Control de frizz',
     definicion: 'Definición',
     encogimiento: 'Controlar encogimiento',
     salud: 'Salud general'
   };
-  const DISPLAY_STYLES = ['normal', 'bold', 'italic', 'serif', 'mono', 'wide', 'script'];
   const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   const VIEW_LABELS = {
     hoy: 'Hoy', perfil: 'Mi perfil capilar', inventario: 'Inventario',
@@ -424,8 +419,7 @@
       first_name: String(source.first_name || '').slice(0, 40),
       last_name: String(source.last_name || '').slice(0, 40),
       username: sanitizeUsername(source.username),
-      display_name: String(source.display_name || '').slice(0, 50),
-      display_style: pick(source.display_style, DISPLAY_STYLES, 'normal'),
+      display_name: String(source.display_name || '').slice(0, 80),
       bio: String(source.bio || '').slice(0, 160),
       avatar_url: String(source.avatar_url || '').slice(0, 2000),
       banner_url: String(source.banner_url || '').slice(0, 2000)
@@ -942,7 +936,7 @@
 
   function avatarInitial() {
     const p = state.profile;
-    const source = p.display_name || p.first_name || p.username || 'C';
+    const source = p.first_name || p.username || 'C';
     return String(source).trim().charAt(0).toUpperCase() || 'C';
   }
 
@@ -958,8 +952,7 @@
     const email = syncState.session && syncState.session.user ? syncState.session.user.email : '';
     const chips = [
       p.username && shownName !== '@' + p.username ? `<span class="chip">@${esc(p.username)}</span>` : '',
-      email ? `<span class="chip">${esc(email)}</span>` : '',
-      `<span class="chip">${esc(DISPLAY_STYLE_LABELS[p.display_style] || 'Normal')}</span>`
+      email ? `<span class="chip">${esc(email)}</span>` : ''
     ].filter(Boolean).join('');
     const profileFields = [p.first_name, p.last_name, p.username, p.display_name, p.bio, p.avatar_url, p.banner_url, p.curl_pattern, p.porosity, p.thickness, p.goal];
     const completePercent = Math.round(profileFields.filter(Boolean).length / profileFields.length * 100);
@@ -979,7 +972,7 @@
           <div class="profile-avatar flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-[#121214] text-2xl font-semibold sm:h-24 sm:w-24 ${avatarStyle}" role="img" aria-label="Foto de perfil">${p.avatar_url ? '' : esc(avatarInitial())}</div>
           <button class="btn-ghost btn-mini" type="button" data-action="edit-profile">${icon('edit', 'h-3.5 w-3.5')}Editar perfil</button>
         </div>
-        <h2 class="mt-3 truncate text-2xl name-style-${esc(p.display_style)}">${esc(shownName)}</h2>
+        <h2 class="mt-3 break-words text-2xl font-semibold leading-snug">${esc(shownName)}</h2>
         ${showFullName ? `<p class="mt-0.5 truncate text-sm muted">${esc(fullName)}</p>` : ''}
         ${p.bio ? `<p class="mt-3 max-w-2xl text-sm leading-relaxed text-[#d4d4d8]">${esc(p.bio)}</p>` : ''}
         ${chips ? `<div class="mt-4 flex flex-wrap gap-2">${chips}</div>` : ''}
@@ -993,7 +986,6 @@
     $('#profileLastName').value = profile.last_name;
     $('#profileUsername').value = profile.username;
     $('#profileDisplayName').value = profile.display_name;
-    $('#profileDisplayNameStyle').value = profile.display_style;
     $('#profileBio').value = profile.bio;
     $('#profilePattern').value = profile.curl_pattern;
     $('#profilePorosity').value = profile.porosity;
@@ -1621,7 +1613,6 @@
         last_name: state.profile.last_name,
         username: state.profile.username,
         display_name: state.profile.display_name,
-        display_style: state.profile.display_style,
         bio: state.profile.bio,
         avatar_url: state.profile.avatar_url,
         banner_url: state.profile.banner_url,
@@ -2056,8 +2047,7 @@
       first_name: meta.first_name || before.first_name,
       last_name: meta.last_name || before.last_name,
       username,
-      display_name: meta.display_name || before.display_name || meta.first_name || '',
-      display_style: meta.display_style || before.display_style
+      display_name: meta.display_name || before.display_name || meta.first_name || ''
     }));
     const changed = Object.keys(next).some((key) => next[key] !== before[key]);
     clearPendingProfile();
@@ -2079,8 +2069,7 @@
           <div><label class="label" for="setupLastName">Apellido</label><input class="field" id="setupLastName" maxlength="40" value="${esc(p.last_name)}" /></div>
         </div>
         <div><label class="label" for="setupUsername">Usuario único</label><input class="field" id="setupUsername" maxlength="20" value="${esc(p.username)}" placeholder="sebasdaza" /><p id="setupUsernameStatus" class="mt-1.5 text-xs faint">3–20 caracteres: letras, números, punto o guion bajo.</p></div>
-        <div><label class="label" for="setupDisplayName">Nombre a mostrar</label><input class="field" id="setupDisplayName" maxlength="50" value="${esc(p.display_name)}" placeholder="Como te verán los demás" /></div>
-        <div><label class="label" for="setupDisplayStyle">Estilo del nombre</label><select class="field" id="setupDisplayStyle">${DISPLAY_STYLES.map((style) => `<option value="${style}" ${style === p.display_style ? 'selected' : ''}>${esc(style.charAt(0).toUpperCase() + style.slice(1))}</option>`).join('')}</select></div>
+        <div><label class="label" for="setupDisplayName">Nombre a mostrar</label><input class="field" id="setupDisplayName" maxlength="80" value="${esc(p.display_name)}" placeholder="Pega aquí tu nombre decorativo" /></div>
         <div><label class="label" for="setupBio">Biografía</label><textarea class="field" id="setupBio" rows="2" maxlength="160" placeholder="Cuéntanos algo sobre ti...">${esc(p.bio)}</textarea></div>
         <div class="flex flex-wrap justify-end gap-2 pt-2">
           <button class="btn-ghost" type="button" data-close-modal>Ahora no</button>
@@ -2099,7 +2088,6 @@
         last_name: $('#setupLastName').value.trim(),
         username,
         display_name: $('#setupDisplayName').value.trim(),
-        display_style: $('#setupDisplayStyle').value,
         bio: $('#setupBio').value.trim()
       }));
       persist();
@@ -2108,7 +2096,7 @@
       if (sb && syncState.session) sb.auth.updateUser({ data: {
         first_name: state.profile.first_name, last_name: state.profile.last_name,
         username: state.profile.username, display_name: state.profile.display_name,
-        display_style: state.profile.display_style, bio: state.profile.bio
+        bio: state.profile.bio
       } }).catch(() => {});
       if (syncState.ready) pushCloud(true);
       toast('Perfil guardado');
@@ -2183,7 +2171,6 @@
       last_name: $('#profileLastName').value.trim(),
       username,
       display_name: $('#profileDisplayName').value.trim(),
-      display_style: $('#profileDisplayNameStyle').value,
       bio: $('#profileBio').value.trim(),
       curl_pattern: $('#profilePattern').value,
       porosity: $('#profilePorosity').value,
@@ -2195,7 +2182,7 @@
     if (sb && syncState.session) sb.auth.updateUser({ data: {
       first_name: state.profile.first_name, last_name: state.profile.last_name,
       username: state.profile.username, display_name: state.profile.display_name,
-      display_style: state.profile.display_style, bio: state.profile.bio
+      bio: state.profile.bio
     } }).catch(() => {});
     if (syncState.ready) pushCloud(true);
     setProfileEditing(false);
@@ -2255,7 +2242,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=19');
+        await navigator.serviceWorker.register('./sw.js?v=20');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);

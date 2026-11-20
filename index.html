@@ -227,13 +227,6 @@
       background-color: #27272a; background-position: center; background-size: cover;
       background-repeat: no-repeat;
     }
-    .name-style-normal { font-weight: 600; letter-spacing: -.02em; }
-    .name-style-bold { font-weight: 800; letter-spacing: -.045em; }
-    .name-style-italic { font-style: italic; font-weight: 500; }
-    .name-style-serif { font-family: Georgia, 'Times New Roman', serif; font-weight: 600; }
-    .name-style-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 500; letter-spacing: -.03em; }
-    .name-style-wide { font-weight: 300; letter-spacing: .18em; text-transform: uppercase; }
-    .name-style-script { font-family: 'Brush Script MT', 'Segoe Script', cursive; font-weight: 400; letter-spacing: .01em; }
     .file-input { display: none; }
     .hint-ok { color: #a1a1aa; }
     .hint-error { color: #fafafa; }
@@ -463,19 +456,7 @@
                   </div>
                   <div>
                     <label class="label" for="profileDisplayName">Nombre a mostrar</label>
-                    <input class="field" id="profileDisplayName" type="text" placeholder="Como te verán los demás" maxlength="50" />
-                  </div>
-                  <div>
-                    <label class="label" for="profileDisplayNameStyle">Estilo del nombre</label>
-                    <select class="field" id="profileDisplayNameStyle">
-                      <option value="normal">Normal · Outfit</option>
-                      <option value="bold">Negrita</option>
-                      <option value="italic">Cursiva</option>
-                      <option value="serif">Serif elegante</option>
-                      <option value="mono">Monoespacio</option>
-                      <option value="wide">Espaciado y ligero</option>
-                      <option value="script">Manuscrita</option>
-                    </select>
+                    <input class="field" id="profileDisplayName" type="text" placeholder="Pega aquí tu nombre decorativo" maxlength="80" />
                   </div>
                 </div>
                 <div class="mt-4">
@@ -700,6 +681,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js?v=19"></script>
+  <script src="./app.js?v=20"></script>
 </body>
 </html>
