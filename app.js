@@ -1825,10 +1825,10 @@
   async function verifyEmailCode() {
     if (!sb) { setOtpError(AUTH_UNAVAILABLE); return; }
     const input = $('#authOtpCode');
-    const token = String(input.value || '').replace(/\D/g, '').slice(0, 6);
+    const token = String(input.value || '').replace(/\D/g, '').slice(0, 10);
     input.value = token;
-    if (token.length !== 6) {
-      setOtpError('Escribe los 6 dígitos del código.');
+    if (token.length < 6 || token.length > 10) {
+      setOtpError('Escribe el código completo.');
       return;
     }
     if (!pendingIdentifier) {
@@ -2140,7 +2140,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=11');
+        await navigator.serviceWorker.register('./sw.js?v=12');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
@@ -2547,9 +2547,14 @@
     $('#authVerifyBtn').addEventListener('click', verifyEmailCode);
     $('#authOtpCode').addEventListener('input', (event) => {
       const input = event.currentTarget;
-      input.value = input.value.replace(/\D/g, '').slice(0, 6);
+      input.value = input.value.replace(/\D/g, '').slice(0, 10);
       setOtpError('');
-      if (input.value.length === 6 && !$('#authVerifyBtn').disabled) verifyEmailCode();
+    });
+    $('#authOtpCode').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !$('#authVerifyBtn').disabled) {
+        event.preventDefault();
+        verifyEmailCode();
+      }
     });
 
     $('#changeEmailBtn').addEventListener('click', () => { backToIdentify(); $('#authIdentifier').focus(); });
