@@ -371,11 +371,11 @@
           <p class="mt-1 text-xs faint">Tus cambios se guardan al instante.</p>
         </div>
         <div class="mt-4 flex items-center gap-3 px-2">
-          <div id="sideAvatar" class="flex h-9 w-9 items-center justify-center rounded-full border border-[#27272a] bg-[#121214] text-sm font-semibold">C</div>
-          <div class="min-w-0 flex-1">
+          <button id="sideAvatar" class="top-avatar flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#27272a] bg-[#121214] text-sm font-semibold" type="button" data-nav="perfil" aria-label="Abrir mi perfil" title="Mi perfil">C</button>
+          <button class="min-w-0 flex-1 text-left" type="button" data-nav="perfil" aria-label="Abrir mi perfil">
             <p id="sideEmail" class="truncate text-xs muted">Invitado</p>
             <p class="text-[11px] faint">Sesión activa</p>
-          </div>
+          </button>
           <button id="sideSignOut" class="text-xs faint hover:text-white" type="button">Salir</button>
         </div>
       </div>
@@ -692,6 +692,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js?v=14"></script>
+  <script src="./app.js?v=15"></script>
 </body>
 </html>
