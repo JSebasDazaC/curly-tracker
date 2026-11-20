@@ -1087,7 +1087,7 @@
           </div>
           <p class="max-w-[55%] text-right text-sm muted">${fullNameHtml}</p>
         </div>
-        <div class="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <div class="mt-3 flex flex-wrap items-end gap-x-3 gap-y-1">
           <h2 class="break-words text-2xl font-semibold leading-snug"><span class="inline-editable" ${inlineAttrs('display_name')}>${shownName}</span></h2>
           ${usernameHtml}
         </div>
@@ -1140,6 +1140,12 @@
     sizer.innerHTML = originalHtml;
     node.innerHTML = '';
     node.append(sizer, wrap);
+
+    if (meta.type !== 'select') {
+      input.addEventListener('input', () => {
+        sizer.textContent = input.value || input.placeholder || '';
+      });
+    }
 
     let focusNode = input;
     let cleanup = null;
@@ -2691,7 +2697,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=42');
+        await navigator.serviceWorker.register('./sw.js?v=43');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
