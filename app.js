@@ -105,10 +105,9 @@
   }
 
   function curlMark(cls = 'h-6 w-6') {
-    return `<svg class="${cls}" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
-      <path d="M9 13c-4 0-6.5 3-6.5 6.5S5 26 8.5 26c2.8 0 4.5-2 4.5-4.2 0-1.9-1.3-3.3-3-3.3-1.4 0-2.4 1-2.4 2.3"/>
-      <path d="M22 9c-5.3 0-9 4-9 9s3.4 8 7.9 8c3.9 0 6.6-2.8 6.6-6.2 0-3-2.2-5.1-4.9-5.1-2.3 0-4 1.7-4 3.8 0 1.8 1.3 3.1 3 3.1"/>
-      <path d="M34 14c-3.3 0-5.5 2.5-5.5 5.5S31 25 33.5 25c2 0 3.5-1.5 3.5-3.3 0-1.6-1.2-2.8-2.7-2.8"/>
+    // Mismo rizo único que icon.svg, adaptado al viewBox del encabezado.
+    return `<svg class="${cls}" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M20.0 6.0L23.2 6.6L26.2 7.9L28.7 9.8L30.7 12.3L32.0 15.0L32.6 18.0L32.5 21.0L31.7 23.8L30.3 26.3L28.4 28.4L26.1 30.0L23.6 30.9L20.9 31.3L18.3 30.9L15.8 30.0L13.7 28.6L12.0 26.8L10.9 24.7L10.2 22.3L10.2 20.0L10.6 17.8L11.6 15.7L13.0 14.0L14.7 12.7L16.6 11.9L18.7 11.5L20.7 11.7L22.5 12.2L24.2 13.2L25.5 14.5L26.4 16.1L27.0 17.7L27.1 19.4L26.8 21.1L26.2 22.6L25.3 23.8L24.1 24.8L22.8 25.4L21.4 25.7L20.0 25.7L18.7 25.3L17.6 24.7L16.7 23.8L16.1 22.8L15.7 21.8L15.6 20.7L15.8 19.7L16.2 18.8L16.8 18.0L17.5 17.5L18.2 17.1L19.0 17.0L19.8 17.1L20.4 17.3L21.0 17.7L21.4 18.1L21.6 18.6L21.7 19.1L21.7 19.6L21.5 20.0"/>
     </svg>`;
   }
 
