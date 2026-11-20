@@ -15,16 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Outfit', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
-        }
-      }
-    };
-  </script>
+  <link rel="stylesheet" href="./tailwind.css?v=32" />
   <style>
     :root { color-scheme: dark; }
     * { -webkit-tap-highlight-color: transparent; }
@@ -679,7 +670,7 @@
   <div id="modalRoot"></div>
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js?v=31"></script>
+  <script src="./supabase.js?v=32"></script>
+  <script src="./app.js?v=32"></script>
 </body>
 </html>

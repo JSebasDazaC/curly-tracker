@@ -1,12 +1,14 @@
 /* Curly Tracker · Service Worker
    Caché básica offline + notificaciones locales y push. */
-const CACHE = 'curly-tracker-v31';
+const CACHE = 'curly-tracker-v32';
 const SCOPE = self.registration.scope;
 
 const LOCAL_ASSETS = [
   './',
   './index.html',
-  './app.js?v=31',
+  './app.js?v=32',
+  './tailwind.css?v=32',
+  './supabase.js?v=32',
   './manifest.json',
   './icon.svg?v=5',
   './icon-192.png?v=5',
@@ -14,9 +16,7 @@ const LOCAL_ASSETS = [
 ];
 
 const REMOTE_ASSETS = [
-  'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js'
+  'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap'
 ];
 
 let reminderState = { enabled: true, time: '08:00' };
