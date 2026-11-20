@@ -93,6 +93,7 @@
     close: '<path d="M18 6 6 18M6 6l12 12"/>',
     arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     chevron: '<path d="m6 9 6 6 6-6"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
     calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>',
     star: '<path d="m12 3 2.9 5.9 6.5 1-4.7 4.6 1.1 6.5L12 18l-5.8 3 1.1-6.5L2.6 9.9l6.5-1Z"/>',
     lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
@@ -218,7 +219,7 @@
   }
 
   function closeAllSelects(except) {
-    $$('.select-trigger[data-open="true"]').forEach((trigger) => {
+    $$('.select-trigger[data-open="true"], .picker-trigger[data-open="true"]').forEach((trigger) => {
       if (trigger === except) return;
       trigger.dataset.open = 'false';
       trigger.setAttribute('aria-expanded', 'false');
@@ -226,6 +227,8 @@
       if (menu && menu.classList.contains('select-menu')) {
         menu.classList.add('hidden');
         $$('.select-option', menu).forEach((option) => { option.dataset.focused = 'false'; });
+      } else if (menu && menu.classList.contains('picker-menu')) {
+        menu.classList.add('hidden');
       }
     });
   }
@@ -253,6 +256,131 @@
     syncSelect(select);
     closeAllSelects();
     select.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  /* ---------------- Selectores de hora y fecha ---------------- */
+  function initPickers(root = document) {
+    $$('input.field[type="time"], input.field[type="date"]', root).forEach((input) => {
+      if (input.dataset.customized === 'true') return;
+      input.dataset.customized = 'true';
+      input.classList.add('native-picker');
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'custom-picker';
+
+      const trigger = document.createElement('button');
+      trigger.type = 'button';
+      trigger.className = 'picker-trigger field';
+      trigger.setAttribute('aria-haspopup', 'dialog');
+      trigger.setAttribute('aria-expanded', 'false');
+
+      const leading = document.createElement('span');
+      leading.className = 'picker-leading';
+      leading.innerHTML = icon(input.type === 'time' ? 'clock' : 'calendar', 'h-4 w-4 text-[#a1a1aa]');
+      const valueNode = document.createElement('span');
+      valueNode.className = 'picker-value';
+      leading.appendChild(valueNode);
+
+      const chevron = document.createElement('span');
+      chevron.className = 'select-chevron';
+      chevron.innerHTML = icon('chevron', 'h-4 w-4');
+      trigger.append(leading, chevron);
+
+      const menu = document.createElement('div');
+      menu.className = 'picker-menu hidden';
+      menu.setAttribute('role', 'dialog');
+
+      input.parentNode.insertBefore(wrapper, input);
+      wrapper.append(input, trigger, menu);
+      if (input.type === 'date') {
+        const initial = parseDateKey(input.value || dateKey());
+        wrapper.dataset.viewYear = String(initial.getFullYear());
+        wrapper.dataset.viewMonth = String(initial.getMonth());
+      }
+      syncPicker(input);
+    });
+  }
+
+  function syncPicker(input) {
+    const wrapper = input.closest('.custom-picker');
+    if (!wrapper) return;
+    const valueNode = $('.picker-value', wrapper);
+    if (input.type === 'time') {
+      if (valueNode) valueNode.textContent = input.value || '--:--';
+      renderTimePicker(wrapper, input);
+      return;
+    }
+    const date = parseDateKey(input.value || dateKey());
+    if (valueNode) valueNode.textContent = formatDay(date, { weekday: 'short', day: 'numeric', month: 'short' });
+    wrapper.dataset.viewYear = String(date.getFullYear());
+    wrapper.dataset.viewMonth = String(date.getMonth());
+    renderDatePicker(wrapper, input);
+  }
+
+  function renderTimePicker(wrapper, input) {
+    const menu = $('.picker-menu', wrapper);
+    if (!menu) return;
+    const current = /^(\d{2}):(\d{2})$/.test(input.value) ? input.value.split(':') : ['08', '00'];
+    const hours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'));
+    const minutes = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, '0'));
+    if (!minutes.includes(current[1])) {
+      minutes.push(current[1]);
+      minutes.sort();
+    }
+    const column = (title, values, selected, part) => `<div class="picker-column">
+      <p class="picker-column-title">${title}</p>
+      ${values.map((value) => `<button type="button" class="picker-option" data-picker-part="${part}" data-value="${value}" aria-selected="${value === selected}">${value}</button>`).join('')}
+    </div>`;
+    menu.innerHTML = `<div class="picker-columns">${column('Hora', hours, current[0], 'hour')}${column('Min', minutes, current[1], 'minute')}</div>
+      <div class="mt-3 flex flex-wrap gap-1.5 border-t border-[#27272a] pt-3">
+        ${['07:00', '08:00', '09:00', '12:00', '20:00', '22:00'].map((time) => `<button type="button" class="picker-preset" data-picker-preset="${time}">${time}</button>`).join('')}
+      </div>`;
+  }
+
+  function renderDatePicker(wrapper, input) {
+    const menu = $('.picker-menu', wrapper);
+    if (!menu) return;
+    const year = Number(wrapper.dataset.viewYear);
+    const month = Number(wrapper.dataset.viewMonth);
+    const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const maxKey = input.max ? dateKey(parseDateKey(input.max)) : dateKey();
+    const label = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(new Date(year, month, 1));
+    const weekdays = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+    let cells = '';
+    for (let index = 0; index < firstWeekday; index += 1) cells += '<span></span>';
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      cells += `<button type="button" class="picker-day" data-picker-date="${key}" aria-selected="${key === input.value}" ${key > maxKey ? 'disabled' : ''}>${day}</button>`;
+    }
+    menu.innerHTML = `<div class="picker-header">
+        <button type="button" class="picker-nav" data-picker-nav="-1" aria-label="Mes anterior">${icon('chevron', 'h-4 w-4 rotate-180')}</button>
+        <span class="picker-month">${esc(label)}</span>
+        <button type="button" class="picker-nav" data-picker-nav="1" aria-label="Mes siguiente">${icon('chevron', 'h-4 w-4')}</button>
+      </div>
+      <div class="picker-grid">${weekdays.map((day) => `<span class="picker-weekday">${day}</span>`).join('')}${cells}</div>
+      <div class="picker-footer">
+        <button type="button" data-picker-today>${icon('calendar', 'mr-1 inline h-3.5 w-3.5')}Hoy</button>
+        <button type="button" data-picker-clear>Limpiar</button>
+      </div>`;
+  }
+
+  function togglePicker(trigger) {
+    const willOpen = trigger.dataset.open !== 'true';
+    closeAllSelects(trigger);
+    trigger.dataset.open = String(willOpen);
+    trigger.setAttribute('aria-expanded', String(willOpen));
+    const menu = trigger.nextElementSibling;
+    if (menu && menu.classList.contains('picker-menu')) menu.classList.toggle('hidden', !willOpen);
+  }
+
+  function setPickerValue(input, value, close = true) {
+    const wrapper = input.closest('.custom-picker');
+    if (!wrapper) return;
+    input.value = value;
+    syncPicker(input);
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    if (close) closeAllSelects();
   }
 
   function toast(message) {
@@ -878,6 +1006,7 @@
 
   function renderReminderSettings() {
     $('#reminderTime').value = state.settings.reminderTime;
+    syncPicker($('#reminderTime'));
     $$('#reminderToggle .seg-btn').forEach((button) => {
       button.dataset.active = String((button.dataset.value === 'on') === Boolean(state.settings.reminderEnabled));
     });
@@ -920,6 +1049,7 @@
     </div>`;
     document.body.style.overflow = 'hidden';
     initSelects(root);
+    initPickers(root);
     const firstField = $('input:not([type="hidden"]), .select-trigger, textarea', root);
     if (firstField) setTimeout(() => firstField.focus(), 60);
   }
@@ -1468,7 +1598,62 @@
     const selectOption = target.closest('.select-option');
     if (selectOption) { chooseSelectOption(selectOption); return; }
 
-    if (!target.closest('.custom-select')) closeAllSelects();
+    const pickerTrigger = target.closest('.picker-trigger');
+    if (pickerTrigger) { togglePicker(pickerTrigger); return; }
+
+    const pickerPart = target.closest('[data-picker-part]');
+    if (pickerPart) {
+      const wrapper = pickerPart.closest('.custom-picker');
+      const input = wrapper && $('input', wrapper);
+      if (input) {
+        const parts = String(input.value || '08:00').split(':');
+        const value = pickerPart.dataset.pickerPart === 'hour'
+          ? `${pickerPart.dataset.value}:${parts[1] || '00'}`
+          : `${parts[0] || '08'}:${pickerPart.dataset.value}`;
+        setPickerValue(input, value, false);
+      }
+      return;
+    }
+
+    const pickerPreset = target.closest('[data-picker-preset]');
+    if (pickerPreset) {
+      const input = $('input', pickerPreset.closest('.custom-picker'));
+      if (input) setPickerValue(input, pickerPreset.dataset.pickerPreset);
+      return;
+    }
+
+    const pickerNav = target.closest('[data-picker-nav]');
+    if (pickerNav) {
+      const wrapper = pickerNav.closest('.custom-picker');
+      const next = new Date(Number(wrapper.dataset.viewYear), Number(wrapper.dataset.viewMonth) + Number(pickerNav.dataset.pickerNav), 1);
+      wrapper.dataset.viewYear = String(next.getFullYear());
+      wrapper.dataset.viewMonth = String(next.getMonth());
+      renderDatePicker(wrapper, $('input', wrapper));
+      return;
+    }
+
+    const pickerToday = target.closest('[data-picker-today]');
+    if (pickerToday) {
+      const input = $('input', pickerToday.closest('.custom-picker'));
+      if (input) setPickerValue(input, dateKey());
+      return;
+    }
+
+    const pickerClear = target.closest('[data-picker-clear]');
+    if (pickerClear) {
+      const input = $('input', pickerClear.closest('.custom-picker'));
+      if (input) setPickerValue(input, '');
+      return;
+    }
+
+    const pickerDay = target.closest('[data-picker-date]');
+    if (pickerDay) {
+      const input = $('input', pickerDay.closest('.custom-picker'));
+      if (input) setPickerValue(input, pickerDay.dataset.pickerDate);
+      return;
+    }
+
+    if (!target.closest('.custom-select') && !target.closest('.custom-picker')) closeAllSelects();
 
     const nav = target.closest('[data-nav]');
     if (nav) { closeModal(); setView(nav.dataset.nav); return; }
@@ -1562,33 +1747,36 @@
   });
 
   document.addEventListener('keydown', (event) => {
-    const openTrigger = $('.select-trigger[data-open="true"]');
+    const openTrigger = $('.select-trigger[data-open="true"]') || $('.picker-trigger[data-open="true"]');
     if (openTrigger) {
-      const menu = openTrigger.nextElementSibling;
-      const options = (menu && menu.classList.contains('select-menu')) ? $$('.select-option', menu) : [];
-      const focusedIndex = options.findIndex((option) => option.dataset.focused === 'true');
-
       if (event.key === 'Escape') {
         event.preventDefault();
         closeAllSelects();
         openTrigger.focus();
         return;
       }
-      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-        event.preventDefault();
-        if (!options.length) return;
-        const next = event.key === 'ArrowDown'
-          ? (focusedIndex + 1) % options.length
-          : (focusedIndex <= 0 ? options.length - 1 : focusedIndex - 1);
-        options.forEach((option, index) => { option.dataset.focused = String(index === next); });
-        options[next].scrollIntoView({ block: 'nearest' });
-        return;
+      if (openTrigger.classList.contains('select-trigger')) {
+        const menu = openTrigger.nextElementSibling;
+        const options = (menu && menu.classList.contains('select-menu')) ? $$('.select-option', menu) : [];
+        const focusedIndex = options.findIndex((option) => option.dataset.focused === 'true');
+
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          if (!options.length) return;
+          const next = event.key === 'ArrowDown'
+            ? (focusedIndex + 1) % options.length
+            : (focusedIndex <= 0 ? options.length - 1 : focusedIndex - 1);
+          options.forEach((option, index) => { option.dataset.focused = String(index === next); });
+          options[next].scrollIntoView({ block: 'nearest' });
+          return;
+        }
+        if ((event.key === 'Enter' || event.key === ' ') && focusedIndex >= 0) {
+          event.preventDefault();
+          chooseSelectOption(options[focusedIndex]);
+          return;
+        }
       }
-      if ((event.key === 'Enter' || event.key === ' ') && focusedIndex >= 0) {
-        event.preventDefault();
-        chooseSelectOption(options[focusedIndex]);
-        return;
-      }
+      return;
     }
     if (event.key === 'Escape' && $('#modalRoot').innerHTML) closeModal();
   });
@@ -1596,6 +1784,7 @@
   function init() {
     ['loginMark', 'sideMark', 'topMark'].forEach((id) => { const node = $('#' + id); if (node) node.innerHTML = curlMark('h-6 w-6'); });
     initSelects();
+    initPickers();
     renderNav();
     renderAll();
 
