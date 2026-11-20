@@ -232,17 +232,15 @@
     .relative:hover > .profile-edit-fab, .profile-edit-fab:focus-visible { opacity: 1; }
     @media (hover: none) { .profile-edit-fab { opacity: .8; } }
     .inline-editable {
-      cursor: text; border-radius: 6px; outline: none;
-      transition: background .15s ease, box-shadow .15s ease;
+      cursor: text; outline: none; transition: border-color .15s ease;
     }
-    .inline-editable:hover, .inline-editable:focus-visible {
-      background: rgba(250,250,250,.06); box-shadow: inset 0 -1px 0 #52525b;
-    }
+    .inline-editable:not(.chip) { border: 1px solid transparent; border-radius: 6px; }
+    .inline-editable:hover, .inline-editable:focus-visible { border-color: #a1a1aa; }
     .inline-editable::after { content: "✎"; margin-left: 6px; font-size: 10px; color: #a1a1aa; opacity: 0; }
     .inline-editable:hover::after, .inline-editable:focus-visible::after,
     .inline-editable:focus-within::after { opacity: .7; }
     @media (hover: none) { .inline-editable::after { opacity: .55; } }
-    .inline-editable.inline-editing { background: transparent; box-shadow: none; }
+    .inline-editable.inline-editing { border-color: transparent; background: transparent; box-shadow: none; }
     .inline-editable.inline-editing::after { content: none; }
     .inline-edit-wrap { display: inline-flex; max-width: 100%; align-items: center; gap: 6px; }
     .inline-input {
@@ -686,6 +684,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js?v=29"></script>
+  <script src="./app.js?v=30"></script>
 </body>
 </html>

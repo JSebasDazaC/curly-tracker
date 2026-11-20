@@ -1086,8 +1086,8 @@
           </div>
           <p class="max-w-[55%] text-right text-sm muted">${fullNameHtml}</p>
         </div>
-        <h2 class="mt-3 break-words text-2xl font-semibold leading-snug inline-editable" ${inlineAttrs('display_name')}>${shownName}</h2>
-        <p class="mt-3 max-w-2xl text-sm leading-relaxed text-[#d4d4d8] inline-editable" ${inlineAttrs('bio')}>${bioHtml}</p>
+        <h2 class="mt-3 break-words text-2xl font-semibold leading-snug"><span class="inline-editable" ${inlineAttrs('display_name')}>${shownName}</span></h2>
+        <p class="mt-3 max-w-2xl text-sm leading-relaxed text-[#d4d4d8]"><span class="inline-editable" ${inlineAttrs('bio')}>${bioHtml}</span></p>
         <div class="mt-4 flex flex-wrap gap-2">${usernameHtml}</div>
         ${progressHtml}
       </div>`;
@@ -1257,7 +1257,7 @@
               ${icon(glyph, 'h-4 w-4')}
               <span class="text-[11px] uppercase tracking-wider">${esc(label)}</span>
             </div>
-            <p class="profile-feature-value inline-editable" ${inlineAttrs(field)}>${esc(value || '—')}</p>
+            <p class="profile-feature-value"><span class="inline-editable" ${inlineAttrs(field)}>${esc(value || '—')}</span></p>
             <p class="mt-1 text-xs muted">${esc(note)}</p>
           </div>`).join('')}
       </div>`;
@@ -2690,7 +2690,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=29');
+        await navigator.serviceWorker.register('./sw.js?v=30');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
