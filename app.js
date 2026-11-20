@@ -176,6 +176,17 @@
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+  const cssUrl = (value) => String(value == null ? '' : value)
+    .replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+    .replace(/\r/g, '\\D ').replace(/\n/g, '\\A ').replace(/\f/g, '\\C ');
+
+  const cssUrlAttr = (value) => esc(cssUrl(value));
+
+  function setBgImage(node, url) {
+    if (!node) return;
+    node.style.backgroundImage = url ? `url('${cssUrl(url)}')` : '';
+  }
+
   function uid() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
@@ -477,8 +488,8 @@
       username: sanitizeUsername(source.username),
       display_name: String(source.display_name || '').slice(0, 80),
       bio: String(source.bio || '').slice(0, 160),
-      avatar_url: String(source.avatar_url || '').slice(0, 2000),
-      banner_url: String(source.banner_url || '').slice(0, 2000)
+      avatar_url: String(source.avatar_url || '').slice(0, 5000000),
+      banner_url: String(source.banner_url || '').slice(0, 5000000)
     };
   }
 
@@ -578,6 +589,7 @@
     session: null,
     timer: null,
     syncing: false,
+    pushQueued: false,
     errorShown: false,
     channel: null,
     remoteTimer: null,
@@ -981,8 +993,8 @@
     const holder = $('#socialProfileCard');
     if (!holder) return;
     const p = state.profile;
-    const bannerStyle = p.banner_url ? ` style="background-image:url('${esc(p.banner_url)}')"` : '';
-    const avatarStyle = p.avatar_url ? ` style="background-image:url('${esc(p.avatar_url)}')"` : '';
+    const bannerStyle = p.banner_url ? `background-image:url('${cssUrlAttr(p.banner_url)}')` : '';
+    const avatarStyle = p.avatar_url ? `background-image:url('${cssUrlAttr(p.avatar_url)}')` : '';
     const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
     const shownName = displayName();
     const showFullName = Boolean(fullName) && fullName !== shownName;
@@ -1001,10 +1013,10 @@
       </div>`;
 
     holder.innerHTML = `
-      <div class="profile-banner h-28 sm:h-40" ${bannerStyle}></div>
+      <div class="profile-banner h-28 sm:h-40"${bannerStyle ? ` style="${bannerStyle}"` : ''}></div>
       <div class="px-5 pb-5 sm:px-6">
         <div class="-mt-10 flex items-end justify-between gap-3">
-          <div class="profile-avatar flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-[#121214] text-2xl font-semibold sm:h-24 sm:w-24 ${avatarStyle}" role="img" aria-label="Foto de perfil">${p.avatar_url ? '' : esc(avatarInitial())}</div>
+          <div class="profile-avatar flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-[#121214] text-2xl font-semibold sm:h-24 sm:w-24"${avatarStyle ? ` style="${avatarStyle}"` : ''} role="img" aria-label="Foto de perfil">${p.avatar_url ? '' : esc(avatarInitial())}</div>
           <button class="btn-ghost btn-mini" type="button" data-action="edit-profile">${icon('edit', 'h-3.5 w-3.5')}Editar perfil</button>
         </div>
         <h2 class="mt-3 break-words text-2xl font-semibold leading-snug">${esc(shownName)}</h2>
@@ -1013,6 +1025,19 @@
         ${chips ? `<div class="mt-4 flex flex-wrap gap-2">${chips}</div>` : ''}
         ${progressHtml}
       </div>`;
+  }
+
+  function renderProfileImages() {
+    const profile = state.profile;
+    const avatarPreview = $('#avatarPreview');
+    if (avatarPreview) {
+      setBgImage(avatarPreview, profile.avatar_url);
+      avatarPreview.textContent = profile.avatar_url ? '' : esc(avatarInitial());
+      avatarPreview.classList.toggle('flex', !profile.avatar_url);
+      avatarPreview.classList.toggle('items-center', !profile.avatar_url);
+      avatarPreview.classList.toggle('justify-center', !profile.avatar_url);
+    }
+    setBgImage($('#bannerPreview'), profile.banner_url);
   }
 
   function fillProfileInputs() {
@@ -1027,15 +1052,7 @@
     $('#profileThickness').value = profile.thickness;
     $('#profileGoal').value = profile.goal;
     syncAllSelects();
-
-    const avatarPreview = $('#avatarPreview');
-    avatarPreview.style.backgroundImage = profile.avatar_url ? `url('${esc(profile.avatar_url)}')` : '';
-    avatarPreview.textContent = profile.avatar_url ? '' : esc(avatarInitial());
-    avatarPreview.classList.toggle('flex', !profile.avatar_url);
-    avatarPreview.classList.toggle('items-center', !profile.avatar_url);
-    avatarPreview.classList.toggle('justify-center', !profile.avatar_url);
-    const bannerPreview = $('#bannerPreview');
-    bannerPreview.style.backgroundImage = profile.banner_url ? `url('${esc(profile.banner_url)}')` : '';
+    renderProfileImages();
   }
 
   function renderProfileReadonly() {
@@ -1087,6 +1104,7 @@
 
   function renderProfile() {
     if (!profileEditing) fillProfileInputs();
+    renderProfileImages();
     renderProfileReadonly();
     renderProfileHero();
     renderAccount();
@@ -1323,15 +1341,10 @@
     ['sideAvatar', 'topAvatar'].forEach((id) => {
       const node = $('#' + id);
       if (!node) return;
-      if (avatarUrl) {
-        node.style.backgroundImage = `url('${esc(avatarUrl)}')`;
-        node.style.backgroundSize = 'cover';
-        node.style.backgroundPosition = 'center';
-        node.textContent = '';
-      } else {
-        node.style.backgroundImage = '';
-        node.textContent = initial;
-      }
+      setBgImage(node, avatarUrl);
+      node.style.backgroundSize = 'cover';
+      node.style.backgroundPosition = 'center';
+      node.textContent = avatarUrl ? '' : initial;
     });
     renderConnections();
   }
@@ -1819,9 +1832,9 @@
     if (!syncState.ready || !session) return;
     clearTimeout(syncState.remoteTimer);
     syncState.remoteTimer = setTimeout(() => {
-      if (syncState.session && syncState.session.user.id === session.user.id) {
-        pullCloud(session).catch((error) => console.warn('Curly Tracker: no se pudo refrescar.', error));
-      }
+      if (!syncState.session || syncState.session.user.id !== session.user.id) return;
+      if (syncState.pending || syncState.syncing || syncState.pushQueued) { scheduleRemotePull(session); return; }
+      pullCloud(session).catch((error) => console.warn('Curly Tracker: no se pudo refrescar.', error));
     }, 350);
   }
 
@@ -1854,7 +1867,7 @@
   // Respaldo cuando el WebSocket de Realtime se duerme (PWA en segundo plano).
   function startCrossDeviceSync() {
     const refresh = () => {
-      if (!syncState.session || syncState.pending || document.hidden) return;
+      if (!syncState.session || syncState.pending || syncState.syncing || document.hidden) return;
       if ($('#modalRoot').innerHTML) return;
       if (!syncState.ready) pullCloud(syncState.session, { generation: syncState.generation }).catch(() => {});
       else pullCloud(syncState.session).catch(() => {});
@@ -1865,7 +1878,8 @@
   }
 
   async function pushCloud(showToast) {
-    if (!sb || !syncState.session || !syncState.ready || syncState.syncing) return;
+    if (!sb || !syncState.session || !syncState.ready) return;
+    if (syncState.syncing) { syncState.pushQueued = true; return; }
     const generation = syncState.generation;
     const isCurrent = () => generation === syncState.generation;
     syncState.syncing = true;
@@ -1976,10 +1990,16 @@
       }
     } finally {
       syncState.syncing = false;
-      if (isCurrent()) {
-        syncState.pending = false;
-        renderSyncStatus();
-        renderAccount();
+      if (!isCurrent()) {
+        syncState.pushQueued = false;
+        return;
+      }
+      syncState.pending = false;
+      renderSyncStatus();
+      renderAccount();
+      if (syncState.pushQueued) {
+        syncState.pushQueued = false;
+        queueMicrotask(() => pushCloud(false).catch(() => {}));
       }
     }
   }
@@ -2415,6 +2435,8 @@
       }
       state.profile[key] = url;
       persist();
+      renderProfileImages();
+      renderProfileHero();
       renderAll();
       if (online) pushCloud(true);
       toast(kind === 'avatar' ? 'Foto de perfil actualizada' : 'Banner actualizado');
@@ -2428,6 +2450,8 @@
     const key = kind === 'avatar' ? 'avatar_url' : 'banner_url';
     state.profile[key] = '';
     persist();
+    renderProfileImages();
+    renderProfileHero();
     renderAll();
     if (syncState.ready) pushCloud(true);
     toast(kind === 'avatar' ? 'Foto eliminada' : 'Banner eliminado');
@@ -2530,7 +2554,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=24');
+        await navigator.serviceWorker.register('./sw.js?v=25');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
