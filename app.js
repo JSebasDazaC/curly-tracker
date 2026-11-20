@@ -517,7 +517,7 @@
       profile: normalizeProfile(),
       products: [],
       tools: PRESET_TOOLS.map((name) => ({ id: uid(), name, owned: false, preset: true })),
-      settings: { reminderEnabled: true, reminderTime: '08:00' },
+      settings: { reminderEnabled: true, reminderTime: '08:00', customCursor: false },
       logs: {},
       lastNotified: ''
     };
@@ -589,6 +589,164 @@
   }
 
   let state = loadState();
+
+  const Cursor = (() => {
+    const root = $('#customCursor');
+    const ring = root ? $('.cursor-ring', root) : null;
+    const dot = root ? $('.cursor-dot', root) : null;
+    const labelNode = root ? $('.cursor-label', root) : null;
+    const coarse = Boolean(window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches);
+    let enabled = false;
+    let listening = false;
+    let x = 0, y = 0, rx = 0, ry = 0, frame = null, started = false;
+
+    function stateFor(target) {
+      const node = target && target.closest ? target : null;
+      if (!node) return ['default', ''];
+      const explicit = node.closest('[data-cursor]');
+      if (explicit) return [explicit.dataset.cursor || 'default', explicit.dataset.cursorLabel || ''];
+      if (node.closest('[disabled], [aria-disabled="true"]')) return ['disabled', ''];
+      if (node.closest('input, textarea, [contenteditable="true"]')) return ['text', ''];
+      if (node.closest('[data-hero-avatar], [data-hero-banner], [data-image-edit]')) return ['image', 'Foto'];
+      if (node.closest('[data-inline-field]')) return ['edit', ''];
+      if (node.closest('.select-trigger, .picker-trigger, .custom-select, .custom-picker')) return ['select', 'Abrir'];
+      if (node.closest('button, a, [role="button"], .seg-btn, .kit-switch, [data-action]')) return ['interactive', ''];
+      return ['default', ''];
+    }
+
+    function tick() {
+      frame = null;
+      rx += (x - rx) * 0.35;
+      ry += (y - ry) * 0.35;
+      if (ring) { ring.style.left = rx + 'px'; ring.style.top = ry + 'px'; }
+      if (dot) { dot.style.left = x + 'px'; dot.style.top = y + 'px'; }
+      if (labelNode) { labelNode.style.left = x + 'px'; labelNode.style.top = y + 'px'; }
+      if (Math.abs(rx - x) > 0.2 || Math.abs(ry - y) > 0.2) frame = requestAnimationFrame(tick);
+    }
+
+    function onMove(event) {
+      if (!enabled || !root) return;
+      x = event.clientX;
+      y = event.clientY;
+      if (!started) { rx = x; ry = y; started = true; }
+      const [cursorState, text] = stateFor(event.target);
+      root.dataset.state = cursorState;
+      if (text && labelNode) { labelNode.textContent = text; root.dataset.label = 'true'; }
+      else root.dataset.label = 'false';
+      root.dataset.visible = 'true';
+      if (!frame) frame = requestAnimationFrame(tick);
+    }
+
+    function onLeave() {
+      if (!root) return;
+      root.dataset.visible = 'false';
+      started = false;
+    }
+
+    function apply() {
+      enabled = Boolean(state.settings.customCursor) && !coarse && Boolean(root);
+      document.body.classList.toggle('cursor-active', enabled);
+      if (!enabled) onLeave();
+    }
+
+    function init() {
+      if (!root || listening) return;
+      listening = true;
+      apply();
+      document.addEventListener('pointermove', onMove, { passive: true });
+      document.addEventListener('pointerdown', () => { root.dataset.pressed = 'true'; }, { passive: true });
+      document.addEventListener('pointerup', () => { root.dataset.pressed = 'false'; }, { passive: true });
+      document.documentElement.addEventListener('mouseleave', onLeave);
+      window.addEventListener('blur', onLeave);
+    }
+
+    return { init, apply };
+  })();
+
+  const QuickMenu = (() => {
+    const root = $('#cursorMenu');
+    let actions = [];
+
+    function close() {
+      if (!root) return;
+      root.classList.add('hidden');
+      root.innerHTML = '';
+      actions = [];
+    }
+
+    function open(x, y, items) {
+      if (!root || !items.length) return;
+      close();
+      actions = items.map((item) => item.action);
+      root.innerHTML = items.map((item, index) => `<button type="button" role="menuitem" data-index="${index}">${esc(item.label)}</button>`).join('');
+      root.classList.remove('hidden');
+      const width = root.offsetWidth;
+      const height = root.offsetHeight;
+      root.style.left = Math.max(8, Math.min(x, window.innerWidth - width - 8)) + 'px';
+      root.style.top = Math.max(8, Math.min(y, window.innerHeight - height - 8)) + 'px';
+    }
+
+    function init() {
+      if (!root) return;
+      root.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-index]');
+        if (!button) return;
+        const action = actions[Number(button.dataset.index)];
+        close();
+        if (action) action();
+      });
+      document.addEventListener('pointerdown', (event) => {
+        if (!root.classList.contains('hidden') && !root.contains(event.target)) close();
+      });
+      document.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
+      document.addEventListener('scroll', close, true);
+    }
+
+    return { open, close, init };
+  })();
+
+  async function copyInlineText(node) {
+    const text = (node && node.innerText ? node.innerText : '').trim();
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('Texto copiado');
+    } catch (error) {
+      toast('No se pudo copiar');
+    }
+  }
+
+  function handleContextMenu(event) {
+    if (!state.settings.customCursor) return;
+    const target = event.target && event.target.closest ? event.target : null;
+    if (!target || target.closest('input, textarea, [contenteditable="true"]')) return;
+
+    const imageKind = target.closest('[data-hero-avatar], [data-image-edit="avatar"]') ? 'avatar'
+      : target.closest('[data-hero-banner], [data-image-edit="banner"]') ? 'banner'
+        : null;
+    const inline = target.closest('[data-inline-field]');
+    const dropdown = target.closest('.select-trigger, .picker-trigger');
+    let items = [];
+
+    if (imageKind) {
+      const noun = imageKind === 'avatar' ? 'foto' : 'banner';
+      items = [{ label: `Cambiar ${noun}`, action: () => openImageMenu(imageKind) }];
+      if (state.profile[imageKind === 'avatar' ? 'avatar_url' : 'banner_url']) {
+        items.push({ label: `Quitar ${noun}`, action: () => removeProfileImage(imageKind) });
+      }
+    } else if (inline) {
+      items = [
+        { label: inline.classList.contains('inline-select') ? 'Abrir desplegable' : 'Editar', action: () => beginInlineEdit(inline) },
+        { label: 'Copiar texto', action: () => copyInlineText(inline) }
+      ];
+    } else if (dropdown) {
+      items = [{ label: 'Abrir', action: () => dropdown.click() }];
+    }
+
+    if (!items.length) return;
+    event.preventDefault();
+    QuickMenu.open(event.clientX, event.clientY, items);
+  }
+
   let currentView = 'hoy';
   let currentCategory = CATEGORIES[0];
   let currentStatusFilter = 'all';
@@ -919,6 +1077,8 @@
     renderSyncStatus();
     renderAccount();
     renderReminderSettings();
+    renderCursorSettings();
+    Cursor.apply();
   }
 
   /* ---------------- Render: Hoy ---------------- */
@@ -1467,6 +1627,15 @@
   /* ---------------- Render: Ajustes ---------------- */
   function renderSettings() {
     renderReminderSettings();
+    renderCursorSettings();
+  }
+
+  function renderCursorSettings() {
+    const iconNode = $('#cursorIcon');
+    if (iconNode) iconNode.innerHTML = icon('tool', 'h-5 w-5');
+    $$('#cursorToggle .seg-btn').forEach((button) => {
+      button.dataset.active = String((button.dataset.value === 'on') === Boolean(state.settings.customCursor));
+    });
   }
 
   function renderReminderSettings() {
@@ -2712,7 +2881,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=37');
+        await navigator.serviceWorker.register('./sw.js?v=38');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
@@ -3068,6 +3237,9 @@
 
   function init() {
     ['loginMark', 'sideMark', 'topMark'].forEach((id) => { const node = $('#' + id); if (node) node.innerHTML = curlMark('h-6 w-6'); });
+    Cursor.init();
+    QuickMenu.init();
+    document.addEventListener('contextmenu', handleContextMenu);
     initSelects();
     initPickers();
     renderAuthForm();
@@ -3111,6 +3283,20 @@
 
     $('#askPermissionBtn').addEventListener('click', () => Notifications.requestPermission());
     $('#testNotifBtn').addEventListener('click', () => Notifications.test());
+
+    $('#cursorToggle').addEventListener('click', (event) => {
+      const button = event.target.closest('[data-value]');
+      if (!button) return;
+      $$('#cursorToggle .seg-btn').forEach((item) => { item.dataset.active = String(item === button); });
+    });
+
+    $('#saveCursorBtn').addEventListener('click', () => {
+      state.settings.customCursor = $('#cursorToggle [data-value="on"]').dataset.active === 'true';
+      Cursor.apply();
+      persist();
+      renderCursorSettings();
+      toast(state.settings.customCursor ? 'Tema del cursor activado' : 'Cursor del sistema activado');
+    });
 
     $('#signOutBtn').addEventListener('click', async () => {
       if (sb) await sb.auth.signOut();

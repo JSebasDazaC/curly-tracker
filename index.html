@@ -308,6 +308,70 @@
     .status-dial-label { font-size: 10px; line-height: 1; letter-spacing: .04em; color: #a1a1aa; }
     .inventory-meter { display: flex; height: 6px; border-radius: 999px; background: #27272a; overflow: hidden; }
     .inventory-meter > span { display: block; height: 100%; }
+
+    /* Tema de cursor propio, con estados por tipo de interacción */
+    body.cursor-active, body.cursor-active * { cursor: none !important; }
+    #customCursor {
+      position: fixed; inset: 0 auto auto 0; z-index: 200; pointer-events: none;
+      opacity: 0; transition: opacity .16s ease;
+    }
+    #customCursor[data-visible="true"] { opacity: 1; }
+    #customCursor > span { position: absolute; left: 0; top: 0; }
+    .cursor-dot {
+      width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 999px;
+      background: #fafafa; transition: opacity .14s ease;
+    }
+    .cursor-ring {
+      width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 999px;
+      border: 1px solid rgba(250,250,250,.55); background: transparent;
+      transition: width .16s ease, height .16s ease, margin .16s ease, border-color .16s ease, background .16s ease, opacity .16s ease, transform .1s ease;
+    }
+    #customCursor[data-state="interactive"] .cursor-ring,
+    #customCursor[data-state="select"] .cursor-ring {
+      width: 38px; height: 38px; margin: -19px 0 0 -19px; border-color: #fafafa;
+      background: rgba(250,250,250,.06);
+    }
+    #customCursor[data-state="image"] .cursor-ring {
+      width: 46px; height: 46px; margin: -23px 0 0 -23px; border-color: #fafafa;
+      background: rgba(250,250,250,.08);
+    }
+    #customCursor[data-state="edit"] .cursor-ring {
+      width: 18px; height: 30px; margin: -15px 0 0 -9px; border-radius: 4px;
+      border-color: rgba(250,250,250,.75);
+    }
+    #customCursor[data-state="text"] .cursor-ring {
+      width: 3px; height: 26px; margin: -13px 0 0 -2px; border-radius: 2px;
+      background: #fafafa; border-color: transparent;
+    }
+    #customCursor[data-state="text"] .cursor-dot { opacity: 0; }
+    #customCursor[data-state="disabled"] .cursor-ring { border-color: #52525b; opacity: .5; }
+    #customCursor[data-pressed="true"] .cursor-ring { transform: scale(.82); }
+    #customCursor[data-label="true"] .cursor-label {
+      opacity: 1;
+    }
+    .cursor-label {
+      margin: 14px 0 0 14px; padding: 3px 7px; border-radius: 7px;
+      border: 1px solid #27272a; background: rgba(9,9,11,.92); color: #fafafa;
+      font-size: 10px; line-height: 1.2; letter-spacing: .08em; text-transform: uppercase;
+      white-space: nowrap; opacity: 0; transition: opacity .14s ease;
+    }
+    .cursor-menu {
+      position: fixed; z-index: 190; min-width: 190px; padding: 6px;
+      border: 1px solid #27272a; border-radius: 12px; background: #121214;
+      box-shadow: 0 18px 44px rgba(0,0,0,.6); animation: menuIn .14s ease both;
+    }
+    .cursor-menu button {
+      display: flex; width: 100%; align-items: center; gap: 8px; padding: 9px 10px;
+      border-radius: 8px; color: #a1a1aa; font-size: 13px; text-align: left;
+    }
+    .cursor-menu button:hover, .cursor-menu button:focus-visible { background: rgba(250,250,250,.08); color: #fafafa; outline: none; }
+    @media (hover: none), (pointer: coarse) {
+      body.cursor-active, body.cursor-active * { cursor: auto !important; }
+      #customCursor { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #customCursor, .cursor-ring, .cursor-dot, .cursor-label { transition-duration: .01ms !important; }
+    }
   </style>
 </head>
 <body class="min-h-screen antialiased">
@@ -610,6 +674,33 @@
               </div>
 
               <div class="surface p-5 sm:p-6">
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <p class="text-base font-semibold">Tema del cursor</p>
+                    <p class="mt-1.5 text-sm muted">Puntero propio con estados para texto, botones, desplegables e imágenes.</p>
+                  </div>
+                  <div id="cursorIcon" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#27272a] bg-[#09090b]"></div>
+                </div>
+                <div class="hairline my-5"></div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <span class="label">Estilo del puntero</span>
+                    <div class="seg mt-2" id="cursorToggle">
+                      <button class="seg-btn" type="button" data-value="on">Personalizado</button>
+                      <button class="seg-btn" type="button" data-value="off">Del sistema</button>
+                    </div>
+                  </div>
+                  <div>
+                    <span class="label">Clic derecho</span>
+                    <p class="mt-2 text-xs muted">Abre acciones rápidas sobre fotos y datos editables.</p>
+                  </div>
+                </div>
+                <div class="mt-4 flex justify-end">
+                  <button id="saveCursorBtn" class="btn-ghost" type="button">Guardar tema</button>
+                </div>
+              </div>
+
+              <div class="surface p-5 sm:p-6">
                 <p class="text-base font-semibold">Datos</p>
                 <div class="mt-5 flex flex-wrap gap-2">
                   <button id="exportBtn" class="btn-ghost" type="button">Exportar JSON</button>
@@ -674,10 +765,16 @@
     </div>
   </div>
 
+  <div id="customCursor" data-visible="false" data-state="default" data-pressed="false" data-label="false" aria-hidden="true">
+    <span class="cursor-ring"></span>
+    <span class="cursor-dot"></span>
+    <span class="cursor-label"></span>
+  </div>
+  <div id="cursorMenu" class="cursor-menu hidden" role="menu"></div>
   <div id="modalRoot"></div>
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="./supabase.js?v=32"></script>
-  <script src="./app.js?v=37"></script>
+  <script src="./app.js?v=38"></script>
 </body>
 </html>
