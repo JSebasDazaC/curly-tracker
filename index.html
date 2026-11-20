@@ -294,7 +294,7 @@
           <h2 class="text-xl font-semibold">Revisa tu bandeja</h2>
           <p class="mt-1.5 text-sm muted">Te enviamos un código de 6 dígitos a tu correo. Escríbelo aquí para activar tu cuenta.</p>
           <p id="linkSentTarget" class="mt-4 text-sm text-[#fafafa]"></p>
-          <div id="otpFields" class="mt-5 hidden">
+          <div id="otpFields" class="mt-5">
             <label class="label" for="authOtpCode">Código de verificación</label>
             <input class="field mt-1.5 text-center text-lg tracking-[.35em]" id="authOtpCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" />
             <button id="authVerifyBtn" class="btn-primary mt-4 w-full" type="button">Verificar código</button>
@@ -671,6 +671,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js"></script>
+  <script src="./app.js?v=11"></script>
 </body>
 </html>
