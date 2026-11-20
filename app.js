@@ -1858,11 +1858,14 @@
   function showLinkSentPanel(email) {
     showAuthPanel('sent');
     $('#linkSentTarget').textContent = maskEmail(email);
+    $('#otpFields').hidden = false;
+    $('#authOtpCode').value = '';
     $('#linkSentError').textContent = '';
     $('#linkSentError').classList.add('hidden');
+    setTimeout(() => $('#authOtpCode').focus(), 0);
   }
 
-  async function sendMagicLink() {
+  async function sendEmailCode() {
     if (!sb) { setAuthError(AUTH_UNAVAILABLE); return false; }
     const email = normalizeEmail($('#authIdentifier').value);
     if (!validEmail(email)) {
@@ -1880,7 +1883,7 @@
     };
     const { error } = await sb.auth.signInWithOtp({ email, options });
     if (error) {
-      setAuthError(error.message || 'No se pudo enviar el enlace.');
+      setAuthError(error.message || 'No se pudo enviar el código.');
       return false;
     }
     try {
@@ -1890,6 +1893,52 @@
     authStep = 'link-sent';
     showLinkSentPanel(email);
     return true;
+  }
+
+  function setOtpError(message) {
+    const node = $('#linkSentError');
+    if (!node) return;
+    node.textContent = message || '';
+    node.classList.toggle('hidden', !message);
+  }
+
+  async function verifyEmailCode() {
+    if (!sb) { setOtpError(AUTH_UNAVAILABLE); return; }
+    const input = $('#authOtpCode');
+    const token = String(input.value || '').replace(/\D/g, '').slice(0, 6);
+    input.value = token;
+    if (token.length !== 6) {
+      setOtpError('Escribe los 6 dígitos del código.');
+      return;
+    }
+    if (!pendingIdentifier) {
+      setOtpError('Vuelve a introducir tu correo.');
+      return;
+    }
+    setOtpError('');
+    const button = $('#authVerifyBtn');
+    button.disabled = true;
+    button.textContent = 'Verificando…';
+    try {
+      const { data, error } = await sb.auth.verifyOtp({ email: pendingIdentifier, token, type: 'email' });
+      if (error) throw error;
+      const session = data && data.session;
+      if (!session) throw new Error('No se pudo verificar el código.');
+      try {
+        forceProfileSetup = sessionStorage.getItem(PENDING_SIGNUP_KEY) === '1';
+        sessionStorage.removeItem(PENDING_SIGNUP_KEY);
+      } catch (error) { /* sin sesión */ }
+      await enterWithSession(session);
+      restoreReturnTab();
+    } catch (error) {
+      const detail = String((error && (error.message || error.code)) || '');
+      setOtpError(/expired|caduc|invalid|incorrect|inválid/i.test(detail)
+        ? 'El código no es válido o ha caducado. Solicita otro.'
+        : 'No pudimos verificar el código. Inténtalo de nuevo.');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Verificar código';
+    }
   }
 
   function authErrorText(code) {
@@ -2580,9 +2629,20 @@
       authCallbackError = false;
       try { sessionStorage.removeItem(PENDING_SIGNUP_KEY); } catch (error) { /* sin sesión */ }
       $('#authIdentifier').value = '';
+      $('#otpFields').hidden = true;
+      $('#authOtpCode').value = '';
+      setOtpError('');
       setAuthError('');
       renderAuthForm();
     };
+
+    $('#authVerifyBtn').addEventListener('click', verifyEmailCode);
+    $('#authOtpCode').addEventListener('input', (event) => {
+      const input = event.currentTarget;
+      input.value = input.value.replace(/\D/g, '').slice(0, 6);
+      setOtpError('');
+      if (input.value.length === 6 && !$('#authVerifyBtn').disabled) verifyEmailCode();
+    });
 
     $('#changeEmailBtn').addEventListener('click', () => { backToIdentify(); $('#authIdentifier').focus(); });
     $('#authCallbackBackBtn').addEventListener('click', backToIdentify);
@@ -2604,19 +2664,19 @@
       button.disabled = true;
       button.textContent = 'Enviando…';
       try {
-        const ok = await sendMagicLink();
+        const ok = await sendEmailCode();
         if (!ok) {
-          errorNode.textContent = $('#authError').textContent || 'No se pudo reenviar el enlace.';
+          errorNode.textContent = $('#authError').textContent || 'No se pudo reenviar el código.';
           errorNode.classList.remove('hidden');
         } else {
-          toast('Enlace reenviado.');
+          toast('Código reenviado.');
         }
       } catch (error) {
-        errorNode.textContent = 'No se pudo reenviar el enlace.';
+        errorNode.textContent = 'No se pudo reenviar el código.';
         errorNode.classList.remove('hidden');
       } finally {
         button.disabled = false;
-        button.textContent = 'Reenviar enlace';
+        button.textContent = 'Reenviar código';
       }
     });
 
@@ -2628,7 +2688,7 @@
       submit.disabled = true;
       submit.textContent = 'Enviando…';
       try {
-        await sendMagicLink();
+        await sendEmailCode();
       } catch (error) {
         setAuthError(error && error.message ? error.message : 'No se pudo completar la acción.');
       } finally {
