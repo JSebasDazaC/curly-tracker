@@ -59,6 +59,17 @@
     { id: 'facebook', label: 'Facebook' }
   ];
 
+  const PROVIDER_LOGOS = {
+    google: '<svg class="h-5 w-5" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65Z"/><path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.77 24c0-1.6.27-3.15.76-4.59l-7.98-6.19A23.94 23.94 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19Z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.9l-7.97 6.19C6.51 42.62 14.62 48 24 48Z"/></svg>',
+    azure: '<svg class="h-5 w-5" viewBox="0 0 48 48" aria-hidden="true"><path fill="#F25022" d="M2 2h20v20H2z"/><path fill="#7FBA00" d="M26 2h20v20H26z"/><path fill="#00A4EF" d="M2 26h20v20H2z"/><path fill="#FFB900" d="M26 26h20v20H26z"/></svg>',
+    facebook: '<svg class="h-5 w-5" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#1877F2"/><path fill="#fff" d="M30.5 24H25v14h-6V24h-3.5v-4.9H19v-3.3c0-3.4 2-5.4 5.2-5.4 1.5 0 3.1.3 3.1.3v4.3h-1.8c-1.7 0-2.2 1.1-2.2 2.2v1.8h4.2L30.5 24Z"/></svg>'
+  };
+
+  function providerMark(id) {
+    return `<span class="inline-flex h-5 w-5 shrink-0 items-center justify-center">${PROVIDER_LOGOS[id] || ''}</span>`;
+  }
+
+
   const SYNC_RETRY_MS = 8000;
 
   const PRESET_TOOLS = [
@@ -593,6 +604,8 @@
   let pendingIdentifier = '';
   let forceProfileSetup = false;
   let profileEditing = false;
+  let profileUsernameHint = '3–20 caracteres: letras, números, punto o guion bajo.';
+  let profileUsernameHintOk = true;
   let authCallbackError = false;
   const PENDING_PROFILE_KEY = 'curly-pending-profile';
   const PENDING_SIGNUP_KEY = 'curly-pending-signup';
@@ -1001,9 +1014,32 @@
     return String(source).trim().charAt(0).toUpperCase() || 'C';
   }
 
-  function renderProfileHero() {
+  function profileSelectField(id, label, options, selected) {
+    return `<div>
+      <label class="label" for="${id}">${esc(label)}</label>
+      <select class="field" id="${id}">
+        ${options.map(([value, text]) => `<option value="${esc(value)}"${value === selected ? ' selected' : ''}>${esc(text)}</option>`).join('')}
+      </select>
+    </div>`;
+  }
+
+  function updateHeroImages() {
     const holder = $('#socialProfileCard');
     if (!holder) return;
+    setBgImage($('[data-hero-banner]', holder), state.profile.banner_url);
+    const avatar = $('[data-hero-avatar]', holder);
+    setBgImage(avatar, state.profile.avatar_url);
+    if (avatar) avatar.textContent = state.profile.avatar_url ? '' : avatarInitial();
+  }
+
+  function renderProfileHero(force = false) {
+    const holder = $('#socialProfileCard');
+    if (!holder) return;
+    if (profileEditing && holder.dataset.mode === 'edit' && !force) {
+      updateHeroImages();
+      return;
+    }
+    holder.dataset.mode = profileEditing ? 'edit' : 'view';
     const p = state.profile;
     const bannerStyle = p.banner_url ? `background-image:url('${cssUrlAttr(p.banner_url)}')` : '';
     const avatarStyle = p.avatar_url ? `background-image:url('${cssUrlAttr(p.avatar_url)}')` : '';
@@ -1023,48 +1059,84 @@
         </div>
         <div class="profile-progress mt-2"><span style="width:${completePercent}%"></span></div>
       </div>`;
+    const editFab = (kind, position, label) => `<button class="profile-edit-fab absolute ${position}" type="button" data-image-edit="${kind}" aria-label="${label}" title="${label}">${icon('edit', 'h-4 w-4')}</button>`;
+
+    if (!profileEditing) {
+      holder.innerHTML = `
+        <div class="profile-banner h-28 sm:h-40"${bannerStyle ? ` style="${bannerStyle}"` : ''} data-hero-banner></div>
+        <div class="px-5 pb-5 sm:px-6">
+          <div class="-mt-10 flex items-end justify-between gap-3">
+            <div class="profile-avatar flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-[#121214] text-2xl font-semibold sm:h-24 sm:w-24"${avatarStyle ? ` style="${avatarStyle}"` : ''} data-hero-avatar role="img" aria-label="Foto de perfil">${p.avatar_url ? '' : esc(avatarInitial())}</div>
+            <button class="btn-ghost btn-mini" type="button" data-action="edit-profile">${icon('edit', 'h-3.5 w-3.5')}Editar perfil</button>
+          </div>
+          <h2 class="mt-3 break-words text-2xl font-semibold leading-snug">${esc(shownName)}</h2>
+          ${showFullName ? `<p class="mt-0.5 truncate text-sm muted">${esc(fullName)}</p>` : ''}
+          ${p.bio ? `<p class="mt-3 max-w-2xl text-sm leading-relaxed text-[#d4d4d8]">${esc(p.bio)}</p>` : ''}
+          ${chips ? `<div class="mt-4 flex flex-wrap gap-2">${chips}</div>` : ''}
+          ${progressHtml}
+        </div>`;
+      return;
+    }
 
     holder.innerHTML = `
-      <div class="profile-banner h-28 sm:h-40"${bannerStyle ? ` style="${bannerStyle}"` : ''}></div>
+      <div class="relative">
+        <div class="profile-banner h-28 sm:h-40"${bannerStyle ? ` style="${bannerStyle}"` : ''} data-hero-banner></div>
+        ${editFab('banner', 'right-4 top-4', 'Editar banner')}
+      </div>
       <div class="px-5 pb-5 sm:px-6">
-        <div class="-mt-10 flex items-end justify-between gap-3">
-          <div class="profile-avatar flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-[#121214] text-2xl font-semibold sm:h-24 sm:w-24"${avatarStyle ? ` style="${avatarStyle}"` : ''} role="img" aria-label="Foto de perfil">${p.avatar_url ? '' : esc(avatarInitial())}</div>
-          <button class="btn-ghost btn-mini" type="button" data-action="edit-profile">${icon('edit', 'h-3.5 w-3.5')}Editar perfil</button>
+        <div class="-mt-10 flex items-start justify-between gap-3">
+          <div class="relative shrink-0">
+            <div class="profile-avatar flex h-20 w-20 items-center justify-center rounded-full border-4 border-[#121214] text-2xl font-semibold sm:h-24 sm:w-24"${avatarStyle ? ` style="${avatarStyle}"` : ''} data-hero-avatar role="img" aria-label="Foto de perfil">${p.avatar_url ? '' : esc(avatarInitial())}</div>
+            ${editFab('avatar', '-right-1 bottom-1', 'Editar foto de perfil')}
+          </div>
+          <div class="flex flex-wrap justify-end gap-2">
+            <button class="btn-ghost btn-mini" type="button" data-action="cancel-profile">Cancelar</button>
+            <button class="btn-primary btn-mini" type="button" data-action="save-profile">Guardar</button>
+          </div>
         </div>
-        <h2 class="mt-3 break-words text-2xl font-semibold leading-snug">${esc(shownName)}</h2>
-        ${showFullName ? `<p class="mt-0.5 truncate text-sm muted">${esc(fullName)}</p>` : ''}
-        ${p.bio ? `<p class="mt-3 max-w-2xl text-sm leading-relaxed text-[#d4d4d8]">${esc(p.bio)}</p>` : ''}
-        ${chips ? `<div class="mt-4 flex flex-wrap gap-2">${chips}</div>` : ''}
+        <p class="label mt-5">Edición directa</p>
+        <p class="mt-1 text-xs muted">Cambia los datos aquí mismo y guarda cuando termines.</p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label class="label" for="profileFirstName">Nombre</label>
+            <input class="field" id="profileFirstName" type="text" autocomplete="given-name" placeholder="Tu nombre" maxlength="40" value="${esc(p.first_name)}" />
+          </div>
+          <div>
+            <label class="label" for="profileLastName">Apellido</label>
+            <input class="field" id="profileLastName" type="text" autocomplete="family-name" placeholder="Tu apellido" maxlength="40" value="${esc(p.last_name)}" />
+          </div>
+          <div>
+            <label class="label" for="profileUsername">Usuario único</label>
+            <input class="field" id="profileUsername" type="text" autocomplete="username" placeholder="tu.usuario" maxlength="20" value="${esc(p.username)}" />
+            <p id="profileUsernameStatus" class="mt-1.5 text-xs ${profileUsernameHintOk ? 'hint-ok' : 'hint-error'}">${esc(profileUsernameHint)}</p>
+          </div>
+          <div>
+            <label class="label" for="profileDisplayName">Nombre a mostrar</label>
+            <div class="flex items-center gap-2">
+              <input class="field" id="profileDisplayName" type="text" placeholder="Pega aquí tu nombre decorativo" maxlength="80" value="${esc(p.display_name)}" />
+              <button class="profile-edit-fab shrink-0" type="button" data-action="focus-display-name" aria-label="Editar nombre a mostrar" title="Editar nombre a mostrar">${icon('edit', 'h-4 w-4')}</button>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <label class="label" for="profileBio">Biografía</label>
+          <textarea class="field" id="profileBio" rows="2" maxlength="160" placeholder="Cuéntanos algo sobre tu rutina...">${esc(p.bio)}</textarea>
+        </div>
+        <div class="hairline my-5"></div>
+        <p class="label">Perfil capilar</p>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          ${profileSelectField('profilePattern', 'Patrón de rizo', [['2C','2C · Ondas definidas'],['3A','3A · Rizos sueltos'],['3B','3B · Rizos medianos'],['3C','3C · Rizos apretados'],['4A','4A · Rizos muy apretados']], p.curl_pattern)}
+          ${profileSelectField('profilePorosity', 'Porosidad', [['baja','Baja · Absorbe despacio'],['media','Media · Equilibrada'],['alta','Alta · Absorbe rápido']], p.porosity)}
+          ${profileSelectField('profileThickness', 'Grosor del cabello', [['fino','Fino'],['medio','Medio'],['grueso','Grueso']], p.thickness)}
+          ${profileSelectField('profileGoal', 'Objetivo actual', [['frizz','Control de frizz'],['definicion','Definición'],['encogimiento','Controlar encogimiento'],['salud','Salud general']], p.goal)}
+        </div>
         ${progressHtml}
       </div>`;
+    initSelects(holder);
   }
 
   function renderProfileImages() {
-    const profile = state.profile;
-    const avatarPreview = $('#avatarPreview');
-    if (avatarPreview) {
-      setBgImage(avatarPreview, profile.avatar_url);
-      avatarPreview.textContent = profile.avatar_url ? '' : esc(avatarInitial());
-      avatarPreview.classList.toggle('flex', !profile.avatar_url);
-      avatarPreview.classList.toggle('items-center', !profile.avatar_url);
-      avatarPreview.classList.toggle('justify-center', !profile.avatar_url);
-    }
-    setBgImage($('#bannerPreview'), profile.banner_url);
-  }
-
-  function fillProfileInputs() {
-    const profile = state.profile;
-    $('#profileFirstName').value = profile.first_name;
-    $('#profileLastName').value = profile.last_name;
-    $('#profileUsername').value = profile.username;
-    $('#profileDisplayName').value = profile.display_name;
-    $('#profileBio').value = profile.bio;
-    $('#profilePattern').value = profile.curl_pattern;
-    $('#profilePorosity').value = profile.porosity;
-    $('#profileThickness').value = profile.thickness;
-    $('#profileGoal').value = profile.goal;
-    syncAllSelects();
-    renderProfileImages();
+    updateHeroImages();
   }
 
   function renderProfileReadonly() {
@@ -1107,15 +1179,16 @@
 
   function setProfileEditing(editing) {
     profileEditing = Boolean(editing);
-    $('#profileViewMode').hidden = profileEditing;
-    $('#profileEditMode').hidden = !profileEditing;
-    if (profileEditing) fillProfileInputs();
-    renderProfileHero();
-    if (profileEditing) setTimeout(() => $('#profileFirstName').focus(), 0);
+    if (!profileEditing) {
+      profileUsernameHint = '3–20 caracteres: letras, números, punto o guion bajo.';
+      profileUsernameHintOk = true;
+    }
+    closeAllSelects();
+    renderProfileHero(true);
+    if (profileEditing) setTimeout(() => { const node = $('#profileFirstName'); if (node) node.focus(); }, 0);
   }
 
   function renderProfile() {
-    if (!profileEditing) fillProfileInputs();
     renderProfileImages();
     renderProfileReadonly();
     renderProfileHero();
@@ -1389,9 +1462,12 @@
         ? `<button class="btn-ghost btn-mini shrink-0" type="button" data-unlink-provider="${provider.id}" ${canUnlink ? '' : 'disabled title="Debe conservar al menos un acceso"'}>Desvincular</button>`
         : `<button class="btn-ghost btn-mini shrink-0" type="button" data-link-provider="${provider.id}">Vincular</button>`;
       return `<div class="flex items-center justify-between gap-3 py-3">
-        <div class="min-w-0">
-          <p class="truncate text-sm font-medium">${provider.label}</p>
-          <p class="mt-0.5 text-[11px] faint">${isLinked ? 'Vinculado' : 'No vinculado'}</p>
+        <div class="flex min-w-0 items-center gap-3">
+          ${providerMark(provider.id)}
+          <div class="min-w-0">
+            <p class="truncate text-sm font-medium">${provider.label}</p>
+            <p class="mt-0.5 text-[11px] faint">${isLinked ? 'Vinculado' : 'No vinculado'}</p>
+          </div>
         </div>
         ${action}
       </div>`;
@@ -2085,10 +2161,12 @@
   }
 
   function setProfileUsernameStatus(message, ok) {
+    profileUsernameHint = message;
+    profileUsernameHintOk = Boolean(ok);
     const node = $('#profileUsernameStatus');
     if (!node) return;
     node.textContent = message;
-    node.className = 'mt-1.5 text-xs ' + (ok ? 'hint-ok' : 'hint-error');
+    node.className = 'mt-1.5 text-xs ' + (profileUsernameHintOk ? 'hint-ok' : 'hint-error');
   }
 
   function showAuthPanel(panel) {
@@ -2379,7 +2457,7 @@
           <div><label class="label" for="setupFirstName">Nombre</label><input class="field" id="setupFirstName" maxlength="40" value="${esc(p.first_name)}" /></div>
           <div><label class="label" for="setupLastName">Apellido</label><input class="field" id="setupLastName" maxlength="40" value="${esc(p.last_name)}" /></div>
         </div>
-        <div><label class="label" for="setupUsername">Usuario único</label><input class="field" id="setupUsername" maxlength="20" value="${esc(p.username)}" placeholder="sebasdaza" /><p id="setupUsernameStatus" class="mt-1.5 text-xs faint">3–20 caracteres: letras, números, punto o guion bajo.</p></div>
+        <div><label class="label" for="setupUsername">Usuario único</label><input class="field" id="setupUsername" maxlength="20" value="${esc(p.username)}" placeholder="tu.usuario" /><p id="setupUsernameStatus" class="mt-1.5 text-xs faint">3–20 caracteres: letras, números, punto o guion bajo.</p></div>
         <div><label class="label" for="setupDisplayName">Nombre a mostrar</label><input class="field" id="setupDisplayName" maxlength="80" value="${esc(p.display_name)}" placeholder="Pega aquí tu nombre decorativo" /></div>
         <div><label class="label" for="setupBio">Biografía</label><textarea class="field" id="setupBio" rows="2" maxlength="160" placeholder="Cuéntanos algo sobre ti...">${esc(p.bio)}</textarea></div>
         <div class="flex flex-wrap justify-end gap-2 pt-2">
@@ -2455,6 +2533,17 @@
       console.warn('Curly Tracker: no se pudo subir la imagen.', error);
       toast('No se pudo subir la imagen');
     }
+  }
+
+  function openImageMenu(kind) {
+    const isAvatar = kind === 'avatar';
+    const title = isAvatar ? 'Foto de perfil' : 'Banner';
+    const noun = isAvatar ? 'foto' : 'banner';
+    openModal(`${modalHeader(title, 'PNG, JPG o WEBP · máx. 5 MB')}
+      <div class="grid gap-2">
+        <button class="btn-primary" type="button" data-image-pick="${kind}">Cambiar ${noun}</button>
+        <button class="btn-ghost" type="button" data-image-remove="${kind}">Quitar ${noun}</button>
+      </div>`);
   }
 
   function removeProfileImage(kind) {
@@ -2565,7 +2654,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=26');
+        await navigator.serviceWorker.register('./sw.js?v=27');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
@@ -2639,6 +2728,52 @@
       });
     }
   };
+
+  /* ---------------- Buzón de sugerencias y errores ---------------- */
+  const FEEDBACK_ENDPOINT = 'https://formsubmit.co/ajax/sebastiandaza0209@gmail.com';
+
+  async function submitFeedback(event) {
+    event.preventDefault();
+    const status = $('#feedbackStatus');
+    const button = $('#feedbackSubmitBtn');
+    const type = $('#feedbackType').value === 'error' ? 'Reporte de error' : 'Sugerencia';
+    const name = $('#feedbackName').value.trim();
+    const email = $('#feedbackEmail').value.trim();
+    const message = $('#feedbackMessage').value.trim();
+    if (!message) {
+      if (status) status.textContent = 'Escribe un mensaje antes de enviar.';
+      return;
+    }
+    if (button) button.disabled = true;
+    if (status) status.textContent = 'Enviando…';
+    try {
+      const payload = new FormData();
+      payload.append('_subject', `Curly Tracker · ${type} · ${name || 'Anónimo'}`);
+      payload.append('_captcha', 'false');
+      payload.append('_honey', '');
+      payload.append('_template', 'table');
+      if (email) payload.append('_replyto', email);
+      payload.append('Tipo', type);
+      payload.append('Nombre', name || 'Anónimo');
+      payload.append('Correo', email || 'No indicado');
+      payload.append('Mensaje', message);
+      const response = await fetch(FEEDBACK_ENDPOINT, {
+        method: 'POST', body: payload, headers: { Accept: 'application/json' }
+      });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const result = await response.json();
+      if (result && (result.success === 'false' || result.error)) throw new Error('Respuesta del servicio');
+      if (status) status.textContent = '¡Listo! Gracias por escribirnos.';
+      $('#feedbackForm').reset();
+      toast('Mensaje enviado');
+    } catch (error) {
+      console.warn('Curly Tracker: no se pudo enviar el mensaje.', error);
+      if (status) status.textContent = 'No se pudo enviar. Revisa tu conexión e inténtalo otra vez.';
+      toast('No se pudo enviar el mensaje');
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
 
   /* ---------------- Eventos ---------------- */
   document.addEventListener('click', (event) => {
@@ -2717,6 +2852,33 @@
 
     const editProfile = target.closest('[data-action="edit-profile"]');
     if (editProfile) { setProfileEditing(true); return; }
+
+    const saveProfile = target.closest('[data-action="save-profile"]');
+    if (saveProfile) { saveProfileFromInputs(); return; }
+
+    const cancelProfile = target.closest('[data-action="cancel-profile"]');
+    if (cancelProfile) { setProfileEditing(false); toast('Cambios descartados'); return; }
+
+    const focusDisplayName = target.closest('[data-action="focus-display-name"]');
+    if (focusDisplayName) {
+      const node = $('#profileDisplayName');
+      if (node) { node.focus(); node.select(); }
+      return;
+    }
+
+    const imageEdit = target.closest('[data-image-edit]');
+    if (imageEdit) { openImageMenu(imageEdit.dataset.imageEdit); return; }
+
+    const imagePick = target.closest('[data-image-pick]');
+    if (imagePick) {
+      closeModal();
+      const input = $(imagePick.dataset.imagePick === 'avatar' ? '#profileAvatarInput' : '#profileBannerInput');
+      if (input) input.click();
+      return;
+    }
+
+    const imageRemove = target.closest('[data-image-remove]');
+    if (imageRemove) { closeModal(); removeProfileImage(imageRemove.dataset.imageRemove); return; }
 
     const linkProviderBtn = target.closest('[data-link-provider]');
     if (linkProviderBtn) { linkProvider(linkProviderBtn.dataset.linkProvider); return; }
@@ -2865,26 +3027,31 @@
     $('#addProductBtn').addEventListener('click', () => openProductModal(null, currentCategory));
     $('#addToolBtn').addEventListener('click', openToolModal);
 
-    $('#saveProfileBtn').addEventListener('click', saveProfileFromInputs);
-    $('#cancelProfileBtn').addEventListener('click', () => setProfileEditing(false));
+    const feedbackIcon = $('#feedbackIcon');
+    if (feedbackIcon) feedbackIcon.innerHTML = icon('spark', 'h-5 w-5');
+    $('#feedbackForm').addEventListener('submit', submitFeedback);
 
-    $('#profileUsername').addEventListener('blur', async () => {
-      const username = sanitizeUsername($('#profileUsername').value);
-      if (!validUsername(username)) { setProfileUsernameStatus('3–20 caracteres: letras, números, punto o guion bajo.', false); return; }
+    document.addEventListener('change', (event) => {
+      const input = event.target;
+      if (input.id === 'profileAvatarInput') {
+        uploadProfileImage(input.files && input.files[0], 'avatar');
+        input.value = '';
+      } else if (input.id === 'profileBannerInput') {
+        uploadProfileImage(input.files && input.files[0], 'banner');
+        input.value = '';
+      }
+    });
+
+    document.addEventListener('focusout', async (event) => {
+      if (event.target.id !== 'profileUsername') return;
+      const username = sanitizeUsername(event.target.value);
+      if (!validUsername(username)) {
+        setProfileUsernameStatus('3–20 caracteres: letras, números, punto o guion bajo.', false);
+        return;
+      }
       const available = await isUsernameAvailable(username);
       setProfileUsernameStatus(available ? 'Usuario disponible.' : 'Ese usuario ya está en uso.', available);
     });
-
-    $('#profileAvatarInput').addEventListener('change', (event) => {
-      uploadProfileImage(event.target.files[0], 'avatar');
-      event.target.value = '';
-    });
-    $('#profileBannerInput').addEventListener('change', (event) => {
-      uploadProfileImage(event.target.files[0], 'banner');
-      event.target.value = '';
-    });
-    $('#removeAvatarBtn').addEventListener('click', () => removeProfileImage('avatar'));
-    $('#removeBannerBtn').addEventListener('click', () => removeProfileImage('banner'));
     $('#saveNotifBtn').addEventListener('click', () => {
       const time = $('#reminderTime').value;
       if (!/^\d{2}:\d{2}$/.test(time)) { toast('Selecciona una hora válida'); return; }

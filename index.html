@@ -222,6 +222,13 @@
       background-repeat: no-repeat;
     }
     .file-input { display: none; }
+    .profile-edit-fab {
+      display: flex; width: 34px; height: 34px; align-items: center; justify-content: center;
+      border: 1px solid #3f3f46; border-radius: 999px; background: #09090b;
+      color: #fafafa; box-shadow: 0 4px 14px rgba(0,0,0,.5);
+      transition: border-color .15s ease, transform .15s ease;
+    }
+    .profile-edit-fab:hover { border-color: #a1a1aa; transform: scale(1.05); }
     .hint-ok { color: #a1a1aa; }
     .hint-error { color: #fafafa; }
 
@@ -442,6 +449,8 @@
           </div>
 
           <div id="socialProfileCard" class="surface mb-5 overflow-hidden"></div>
+          <input id="profileAvatarInput" class="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+          <input id="profileBannerInput" class="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
 
           <div class="surface mb-5 p-5 sm:p-6">
             <div class="flex items-start justify-between gap-3">
@@ -485,114 +494,6 @@
                   </div>
                   <div id="profileHairReadonly" class="mt-4"></div>
                 </div>
-              </div>
-              <div id="profileEditMode" hidden class="space-y-5">
-                <div class="surface p-5 sm:p-6">
-                  <div>
-                    <p class="label">Identidad pública</p>
-                  <p class="text-sm muted">Tu usuario es único; el nombre a mostrar puede cambiar cuando quieras.</p>
-                </div>
-                <div class="mt-5 grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label class="label" for="profileFirstName">Nombre</label>
-                    <input class="field" id="profileFirstName" type="text" autocomplete="given-name" placeholder="Sebastián" maxlength="40" />
-                  </div>
-                  <div>
-                    <label class="label" for="profileLastName">Apellido</label>
-                    <input class="field" id="profileLastName" type="text" autocomplete="family-name" placeholder="Daza" maxlength="40" />
-                  </div>
-                  <div>
-                    <label class="label" for="profileUsername">Usuario único</label>
-                    <input class="field" id="profileUsername" type="text" autocomplete="username" placeholder="sebasdaza" maxlength="20" />
-                    <p id="profileUsernameStatus" class="mt-1.5 text-xs faint">3–20 caracteres: letras, números, punto o guion bajo.</p>
-                  </div>
-                  <div>
-                    <label class="label" for="profileDisplayName">Nombre a mostrar</label>
-                    <input class="field" id="profileDisplayName" type="text" placeholder="Pega aquí tu nombre decorativo" maxlength="80" />
-                  </div>
-                </div>
-                <div class="mt-4">
-                  <label class="label" for="profileBio">Biografía</label>
-                  <textarea class="field" id="profileBio" rows="2" maxlength="160" placeholder="Cuéntanos algo sobre tu rutina..."></textarea>
-                </div>
-                <div class="hairline my-6"></div>
-                <p class="label">Imágenes</p>
-                <div class="grid gap-4 sm:grid-cols-2">
-                  <div class="surface-flat p-4">
-                    <div class="flex items-center gap-3">
-                      <div id="avatarPreview" class="profile-avatar h-12 w-12 shrink-0 rounded-full border border-[#27272a]"></div>
-                      <div class="min-w-0 flex-1">
-                        <p class="text-sm font-medium">Foto de perfil</p>
-                        <p class="text-[11px] faint">PNG, JPG o WEBP · máx. 5 MB</p>
-                      </div>
-                    </div>
-                    <div class="mt-3 flex gap-2">
-                      <label class="btn-ghost flex-1 cursor-pointer">Cambiar<input id="profileAvatarInput" class="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" /></label>
-                      <button id="removeAvatarBtn" class="btn-ghost" type="button">Quitar</button>
-                    </div>
-                  </div>
-                  <div class="surface-flat p-4">
-                    <div class="flex items-center gap-3">
-                      <div id="bannerPreview" class="profile-banner h-12 w-full shrink-0 rounded-lg border border-[#27272a]"></div>
-                    </div>
-                    <p class="mt-3 text-sm font-medium">Banner</p>
-                    <p class="text-[11px] faint">PNG, JPG o WEBP · máx. 5 MB</p>
-                    <div class="mt-3 flex gap-2">
-                      <label class="btn-ghost flex-1 cursor-pointer">Cambiar<input id="profileBannerInput" class="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" /></label>
-                      <button id="removeBannerBtn" class="btn-ghost" type="button">Quitar</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="surface p-5 sm:p-6">
-                <p class="label">Perfil capilar</p>
-                <div class="grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <label class="label" for="profilePattern">Patrón de rizo</label>
-                    <select class="field" id="profilePattern">
-                      <option value="2C">2C · Ondas definidas</option>
-                      <option value="3A">3A · Rizos sueltos</option>
-                      <option value="3B">3B · Rizos medianos</option>
-                      <option value="3C">3C · Rizos apretados</option>
-                      <option value="4A">4A · Rizos muy apretados</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="label" for="profilePorosity">Porosidad</label>
-                    <select class="field" id="profilePorosity">
-                      <option value="baja">Baja · Absorbe despacio</option>
-                      <option value="media">Media · Equilibrada</option>
-                      <option value="alta">Alta · Absorbe rápido</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="label" for="profileThickness">Grosor del cabello</label>
-                    <select class="field" id="profileThickness">
-                      <option value="fino">Fino</option>
-                      <option value="medio">Medio</option>
-                      <option value="grueso">Grueso</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="label" for="profileGoal">Objetivo actual</label>
-                    <select class="field" id="profileGoal">
-                      <option value="frizz">Control de frizz</option>
-                      <option value="definicion">Definición</option>
-                      <option value="encogimiento">Controlar encogimiento</option>
-                      <option value="salud">Salud general</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div class="flex flex-wrap items-center justify-between gap-4">
-                <p class="text-xs faint">Pulsa Guardar cambios para aplicarlos. Se sincronizan si has iniciado sesión.</p>
-                <div class="flex gap-2">
-                  <button id="cancelProfileBtn" class="btn-ghost" type="button">Cancelar</button>
-                  <button id="saveProfileBtn" class="btn-primary" type="button">Guardar cambios</button>
-                </div>
-              </div>
               </div>
             </div>
           </div>
@@ -685,6 +586,44 @@
             </div>
 
             <div class="surface p-5 sm:p-6">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-base font-semibold">Buzón de sugerencias y errores</p>
+                  <p class="mt-1.5 text-sm muted">¿Algo que mejorar o algo que no funciona? Escríbenos: llega directo a sebastiandaza0209@gmail.com.</p>
+                </div>
+                <div id="feedbackIcon" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#27272a] bg-[#09090b]"></div>
+              </div>
+              <form id="feedbackForm" class="mt-5 grid gap-3">
+                <div>
+                  <label class="label" for="feedbackType">Tipo de mensaje</label>
+                  <select class="field" id="feedbackType">
+                    <option value="sugerencia">Sugerencia</option>
+                    <option value="error">Reporte de error</option>
+                  </select>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label class="label" for="feedbackName">Tu nombre (opcional)</label>
+                    <input class="field" id="feedbackName" type="text" maxlength="60" placeholder="Cómo quieres que te llamemos" />
+                  </div>
+                  <div>
+                    <label class="label" for="feedbackEmail">Tu correo (opcional)</label>
+                    <input class="field" id="feedbackEmail" type="email" placeholder="nombre@dominio.com" />
+                  </div>
+                </div>
+                <div>
+                  <label class="label" for="feedbackMessage">Mensaje</label>
+                  <textarea class="field" id="feedbackMessage" rows="4" maxlength="1200" required placeholder="Cuéntanos qué pasó o qué te gustaría ver..."></textarea>
+                </div>
+                <input type="text" name="_honey" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <p id="feedbackStatus" class="text-xs faint" role="status"></p>
+                  <button id="feedbackSubmitBtn" class="btn-primary" type="submit">Enviar mensaje</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="surface p-5 sm:p-6">
               <p class="text-base font-semibold">Datos</p>
               <div class="mt-5 flex flex-wrap gap-2">
                 <button id="exportBtn" class="btn-ghost" type="button">Exportar JSON</button>
@@ -712,6 +651,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js?v=26"></script>
+  <script src="./app.js?v=27"></script>
 </body>
 </html>
