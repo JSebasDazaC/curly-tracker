@@ -514,6 +514,7 @@
   let authStep = 'identify';
   let pendingIdentifier = '';
   let forceProfileSetup = false;
+  let profileEditing = false;
   let authCallbackError = false;
   const PENDING_PROFILE_KEY = 'curly-pending-profile';
   const PENDING_SIGNUP_KEY = 'curly-pending-signup';
@@ -958,7 +959,10 @@
       <div class="px-5 pb-5 sm:px-6">
         <div class="-mt-10 flex items-end justify-between gap-3">
           <div class="profile-avatar flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-[#121214] text-2xl font-semibold sm:h-24 sm:w-24 ${avatarStyle}" role="img" aria-label="Foto de perfil">${p.avatar_url ? '' : esc(avatarInitial())}</div>
-          <span class="chip chip-ok">${icon('check', 'h-3.5 w-3.5')}Perfil activo</span>
+          <div class="flex items-center gap-2">
+            <span class="chip chip-ok hidden sm:inline-flex">${icon('check', 'h-3.5 w-3.5')}Perfil activo</span>
+            <button class="btn-ghost btn-mini" type="button" data-action="edit-profile">${icon('edit', 'h-3.5 w-3.5')}Editar perfil</button>
+          </div>
         </div>
         <h2 class="mt-3 truncate text-2xl name-style-${esc(p.display_style)}">${esc(displayName())}</h2>
         <p class="mt-0.5 truncate text-sm muted">${fullName ? esc(fullName) : (p.username ? `@${esc(p.username)}` : 'Elige un usuario único')}</p>
@@ -967,7 +971,7 @@
       </div>`;
   }
 
-  function renderProfile() {
+  function fillProfileInputs() {
     const profile = state.profile;
     $('#profileFirstName').value = profile.first_name;
     $('#profileLastName').value = profile.last_name;
@@ -980,7 +984,6 @@
     $('#profileThickness').value = profile.thickness;
     $('#profileGoal').value = profile.goal;
     syncAllSelects();
-    renderProfileHero();
 
     const avatarPreview = $('#avatarPreview');
     avatarPreview.style.backgroundImage = profile.avatar_url ? `url('${esc(profile.avatar_url)}')` : '';
@@ -990,7 +993,57 @@
     avatarPreview.classList.toggle('justify-center', !profile.avatar_url);
     const bannerPreview = $('#bannerPreview');
     bannerPreview.style.backgroundImage = profile.banner_url ? `url('${esc(profile.banner_url)}')` : '';
+  }
 
+  function profileInfoRows(rows) {
+    return rows.map(([key, value]) => `
+      <div class="profile-info-row">
+        <span class="profile-info-key">${esc(key)}</span>
+        <span class="profile-info-value">${value || '—'}</span>
+      </div>`).join('');
+  }
+
+  function renderProfileReadonly() {
+    const p = state.profile;
+    const email = syncState.session && syncState.session.user ? syncState.session.user.email : '';
+    const styleLabels = {
+      normal: 'Normal', bold: 'Negrita', italic: 'Cursiva', serif: 'Serif elegante',
+      mono: 'Monoespacio', wide: 'Espaciado y ligero', script: 'Manuscrita'
+    };
+    $('#profileDetailsCard').innerHTML = profileInfoRows([
+      ['Nombre', esc(p.first_name)],
+      ['Apellido', esc(p.last_name)],
+      ['Usuario', p.username ? esc('@' + p.username) : ''],
+      ['Nombre a mostrar', esc(displayName())],
+      ['Estilo del nombre', esc(styleLabels[p.display_style] || 'Normal')],
+      ['Correo', esc(email)],
+      ['Biografía', esc(p.bio)],
+      ['Foto', p.avatar_url ? 'Configurada' : 'Sin foto'],
+      ['Banner', p.banner_url ? 'Configurado' : 'Sin banner']
+    ]);
+    $('#profileHairReadonly').innerHTML = profileInfoRows([
+      ['Patrón', esc(`${p.curl_pattern} · ${PATTERN_LABELS[p.curl_pattern] || ''}`)],
+      ['Porosidad', esc(POROSITY_LABELS[p.porosity] || p.porosity)],
+      ['Grosor', esc(THICKNESS_LABELS[p.thickness] || p.thickness)],
+      ['Objetivo', esc(GOAL_LABELS[p.goal] || p.goal)]
+    ]);
+  }
+
+  function setProfileEditing(editing) {
+    profileEditing = Boolean(editing);
+    $('#profileViewMode').hidden = profileEditing;
+    $('#profileEditMode').hidden = !profileEditing;
+    if (profileEditing) fillProfileInputs();
+    renderProfileHero();
+    if (profileEditing) setTimeout(() => $('#profileFirstName').focus(), 0);
+  }
+
+  function renderProfile() {
+    if (!profileEditing) fillProfileInputs();
+    renderProfileReadonly();
+    renderProfileHero();
+
+    const profile = state.profile;
     const washNote = profile.curl_pattern === '4A'
       ? 'Frecuencia de lavado baja: prioriza hidratación intermedia y mascarilla semanal.'
       : profile.thickness === 'fino'
@@ -2154,6 +2207,7 @@
       display_style: state.profile.display_style, bio: state.profile.bio
     } }).catch(() => {});
     if (syncState.ready) pushCloud(true);
+    setProfileEditing(false);
     toast('Perfil guardado');
   }
 
@@ -2210,7 +2264,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=16');
+        await navigator.serviceWorker.register('./sw.js?v=17');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
@@ -2352,6 +2406,9 @@
 
     if (!target.closest('.custom-select') && !target.closest('.custom-picker')) closeAllSelects();
 
+    const editProfile = target.closest('[data-action="edit-profile"]');
+    if (editProfile) { setProfileEditing(true); return; }
+
     const nav = target.closest('[data-nav]');
     if (nav) { closeModal(); setView(nav.dataset.nav); return; }
 
@@ -2491,7 +2548,7 @@
     $('#openLogBtn').addEventListener('click', () => openLogModal(dateKey()));
 
     $('#saveProfileBtn').addEventListener('click', saveProfileFromInputs);
-    $('#saveIdentityBtn').addEventListener('click', saveProfileFromInputs);
+    $('#cancelProfileBtn').addEventListener('click', () => setProfileEditing(false));
 
     $('#profileUsername').addEventListener('blur', async () => {
       const username = sanitizeUsername($('#profileUsername').value);

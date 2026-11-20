@@ -55,6 +55,11 @@
     }
     .btn-ghost:hover { color: #fafafa; border-color: #52525b; background: #18181b; }
     .btn-ghost:active { transform: scale(.98); }
+    .btn-mini { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; font-size: 12px; border-radius: 10px; }
+    .profile-info-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; }
+    .profile-info-row + .profile-info-row { border-top: 1px solid #27272a; }
+    .profile-info-key { flex: 0 0 auto; color: #a1a1aa; font-size: 12px; }
+    .profile-info-value { min-width: 0; font-size: 13px; text-align: right; overflow-wrap: anywhere; }
     .field {
       width: 100%; background: #09090b; border: 1px solid #27272a; border-radius: 12px;
       color: #fafafa; padding: 11px 14px; font-size: 15px; outline: none;
@@ -423,9 +428,20 @@
 
           <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div class="space-y-5">
-              <div class="surface p-5 sm:p-6">
-                <div>
-                  <p class="label">Identidad pública</p>
+              <div id="profileViewMode" class="space-y-5">
+                <div class="surface p-5 sm:p-6">
+                  <p class="label">Datos personales</p>
+                  <div id="profileDetailsCard" class="mt-4"></div>
+                </div>
+                <div class="surface p-5 sm:p-6">
+                  <p class="label">Perfil capilar</p>
+                  <div id="profileHairReadonly" class="mt-4"></div>
+                </div>
+              </div>
+              <div id="profileEditMode" hidden class="space-y-5">
+                <div class="surface p-5 sm:p-6">
+                  <div>
+                    <p class="label">Identidad pública</p>
                   <p class="text-sm muted">Tu usuario es único; el nombre a mostrar puede cambiar cuando quieras.</p>
                 </div>
                 <div class="mt-5 grid gap-4 sm:grid-cols-2">
@@ -491,10 +507,6 @@
                     </div>
                   </div>
                 </div>
-                <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
-                  <p class="text-xs faint">Los cambios se guardan y sincronizan automáticamente.</p>
-                  <button id="saveIdentityBtn" class="btn-primary" type="button">Guardar identidad</button>
-                </div>
               </div>
 
               <div class="surface p-5 sm:p-6">
@@ -536,11 +548,15 @@
                     </select>
                   </div>
                 </div>
-                <div class="hairline my-6"></div>
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                  <p class="text-xs faint">Los cambios se guardan y sincronizan automáticamente.</p>
-                  <button id="saveProfileBtn" class="btn-primary" type="button">Guardar perfil capilar</button>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between gap-4">
+                <p class="text-xs faint">Los cambios se guardan y sincronizan automáticamente.</p>
+                <div class="flex gap-2">
+                  <button id="cancelProfileBtn" class="btn-ghost" type="button">Cancelar</button>
+                  <button id="saveProfileBtn" class="btn-primary" type="button">Guardar cambios</button>
                 </div>
+              </div>
               </div>
             </div>
             <div class="space-y-5">
@@ -691,6 +707,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js?v=16"></script>
+  <script src="./app.js?v=17"></script>
 </body>
 </html>
