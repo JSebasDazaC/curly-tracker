@@ -63,6 +63,10 @@
     alta: 'Alta (absorbe rápido)'
   };
   const THICKNESS_LABELS = { fino: 'Fino', medio: 'Medio', grueso: 'Grueso' };
+  const DISPLAY_STYLE_LABELS = {
+    normal: 'Normal', bold: 'Negrita', italic: 'Cursiva', serif: 'Serif elegante',
+    mono: 'Monoespacio', wide: 'Espaciado y ligero', script: 'Manuscrita'
+  };
   const GOAL_LABELS = {
     frizz: 'Control de frizz',
     definicion: 'Definición',
@@ -775,6 +779,7 @@
     $$('[data-view]').forEach((section) => {
       section.classList.toggle('hidden', section.dataset.view !== currentView);
     });
+    $('#appShell').classList.toggle('profile-open', currentView === 'perfil');
     renderNav();
     renderCurrentView();
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -948,10 +953,13 @@
     const bannerStyle = p.banner_url ? ` style="background-image:url('${esc(p.banner_url)}')"` : '';
     const avatarStyle = p.avatar_url ? ` style="background-image:url('${esc(p.avatar_url)}')"` : '';
     const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
+    const shownName = displayName();
+    const showFullName = Boolean(fullName) && fullName !== shownName;
     const email = syncState.session && syncState.session.user ? syncState.session.user.email : '';
     const chips = [
-      p.username ? `<span class="chip">@${esc(p.username)}</span>` : '',
-      email ? `<span class="chip">${esc(email)}</span>` : ''
+      p.username && shownName !== '@' + p.username ? `<span class="chip">@${esc(p.username)}</span>` : '',
+      email ? `<span class="chip">${esc(email)}</span>` : '',
+      `<span class="chip">${esc(DISPLAY_STYLE_LABELS[p.display_style] || 'Normal')}</span>`
     ].filter(Boolean).join('');
     const profileFields = [p.first_name, p.last_name, p.username, p.display_name, p.bio, p.avatar_url, p.banner_url, p.curl_pattern, p.porosity, p.thickness, p.goal];
     const completePercent = Math.round(profileFields.filter(Boolean).length / profileFields.length * 100);
@@ -969,13 +977,10 @@
       <div class="px-5 pb-5 sm:px-6">
         <div class="-mt-10 flex items-end justify-between gap-3">
           <div class="profile-avatar flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-[#121214] text-2xl font-semibold sm:h-24 sm:w-24 ${avatarStyle}" role="img" aria-label="Foto de perfil">${p.avatar_url ? '' : esc(avatarInitial())}</div>
-          <div class="flex items-center gap-2">
-            <span class="chip chip-ok hidden sm:inline-flex">${icon('check', 'h-3.5 w-3.5')}Perfil activo</span>
-            <button class="btn-ghost btn-mini" type="button" data-action="edit-profile">${icon('edit', 'h-3.5 w-3.5')}Editar perfil</button>
-          </div>
+          <button class="btn-ghost btn-mini" type="button" data-action="edit-profile">${icon('edit', 'h-3.5 w-3.5')}Editar perfil</button>
         </div>
-        <h2 class="mt-3 truncate text-2xl name-style-${esc(p.display_style)}">${esc(displayName())}</h2>
-        <p class="mt-0.5 truncate text-sm muted">${fullName ? esc(fullName) : (p.username ? `@${esc(p.username)}` : 'Elige un usuario único')}</p>
+        <h2 class="mt-3 truncate text-2xl name-style-${esc(p.display_style)}">${esc(shownName)}</h2>
+        ${showFullName ? `<p class="mt-0.5 truncate text-sm muted">${esc(fullName)}</p>` : ''}
         ${p.bio ? `<p class="mt-3 max-w-2xl text-sm leading-relaxed text-[#d4d4d8]">${esc(p.bio)}</p>` : ''}
         ${chips ? `<div class="mt-4 flex flex-wrap gap-2">${chips}</div>` : ''}
         ${progressHtml}
@@ -1008,40 +1013,27 @@
 
   function renderProfileReadonly() {
     const p = state.profile;
-    const email = syncState.session && syncState.session.user ? syncState.session.user.email : '';
-    const styleLabels = {
-      normal: 'Normal', bold: 'Negrita', italic: 'Cursiva', serif: 'Serif elegante',
-      mono: 'Monoespacio', wide: 'Espaciado y ligero', script: 'Manuscrita'
-    };
-    const identity = [
-      ['perfil', 'Nombre', p.first_name],
-      ['perfil', 'Apellido', p.last_name],
-      ['star', 'Usuario', p.username ? '@' + p.username : ''],
-      ['spark', 'Nombre a mostrar', displayName()],
-      ['edit', 'Estilo', styleLabels[p.display_style] || 'Normal'],
-      ['cloud', 'Correo', email]
-    ];
-    $('#profileDetailsCard').innerHTML = `
-      <div class="grid gap-3 sm:grid-cols-2">
-        ${identity.map(([glyph, label, value]) => `
-          <div class="profile-stat">
-            <span class="profile-stat-icon">${icon(glyph, 'h-4 w-4')}</span>
-            <div class="min-w-0">
-              <p class="faint text-[11px] uppercase tracking-wider">${esc(label)}</p>
-              <p class="mt-0.5 truncate text-sm font-medium">${esc(value || '—')}</p>
-            </div>
-          </div>`).join('')}
-      </div>
-      <div class="mt-4 rounded-xl border border-[#27272a] bg-[#09090b] p-4">
-        <p class="faint text-[11px] uppercase tracking-wider">Biografía</p>
-        <p class="mt-2 text-sm leading-relaxed text-[#d4d4d8]">${p.bio ? esc(p.bio) : 'Aún no has escrito tu biografía.'}</p>
-      </div>`;
-
+    const washNote = p.curl_pattern === '4A'
+      ? 'Frecuencia de lavado baja: prioriza hidratación intermedia y mascarilla semanal.'
+      : p.thickness === 'fino'
+        ? 'Cabello fino: lavados frecuentes suaves y texturas ligeras.'
+        : 'Frecuencia equilibrada: dos o tres lavados semanales con definición intermedia.';
+    const porosityNote = {
+      baja: 'Dificultad para absorber; evita capas pesadas y usa calor suave si secas.',
+      media: 'Buena retención; alterna hidratación y fijación sin excesos.',
+      alta: 'Absorbe rápido y pierde humedad; sella con aceite y mascarilla regular.'
+    }[p.porosity] || '';
+    const goalNote = {
+      frizz: 'Acondicionamiento, gel y sellado de puntas.',
+      definicion: 'Crema de peinar, cepillo definidor y fijación con gel.',
+      encogimiento: 'Estiramiento suave, gel y secado con difusor.',
+      salud: 'Limpieza, hidratación y protección nocturna equilibradas.'
+    }[p.goal] || '';
     const features = [
-      ['spark', 'Patrón', p.curl_pattern, PATTERN_LABELS[p.curl_pattern] || ''],
-      ['drop', 'Porosidad', POROSITY_LABELS[p.porosity] || p.porosity, 'Absorción e hidratación'],
-      ['tool', 'Grosor', THICKNESS_LABELS[p.thickness] || p.thickness, 'Textura del cabello'],
-      ['star', 'Objetivo', GOAL_LABELS[p.goal] || p.goal, 'Prioridad de la rutina']
+      ['spark', 'Patrón', `${p.curl_pattern} · ${PATTERN_LABELS[p.curl_pattern] || ''}`, 'Define la frecuencia de lavado y las técnicas.'],
+      ['drop', 'Porosidad', POROSITY_LABELS[p.porosity] || p.porosity, porosityNote],
+      ['tool', 'Grosor', THICKNESS_LABELS[p.thickness] || p.thickness, washNote],
+      ['star', 'Objetivo', GOAL_LABELS[p.goal] || p.goal, goalNote]
     ];
     $('#profileHairReadonly').innerHTML = `
       <div class="grid gap-3 sm:grid-cols-2">
@@ -1070,34 +1062,6 @@
     if (!profileEditing) fillProfileInputs();
     renderProfileReadonly();
     renderProfileHero();
-
-    const profile = state.profile;
-    const washNote = profile.curl_pattern === '4A'
-      ? 'Frecuencia de lavado baja: prioriza hidratación intermedia y mascarilla semanal.'
-      : profile.thickness === 'fino'
-        ? 'Cabello fino: lavados frecuentes suaves y texturas ligeras.'
-        : 'Frecuencia equilibrada: dos o tres lavados semanales con definición intermedia.';
-
-    const porosityNote = {
-      baja: 'Porosidad baja: dificultad para absorber; evita capas pesadas y usa calor suave si secas.',
-      media: 'Porosidad media: buena retención; alterna hidratación y fijación sin excesos.',
-      alta: 'Porosidad alta: absorbe rápido y pierde humedad; sellado con aceite y mascarilla regular.'
-    }[profile.porosity] || '';
-
-    const goalNote = {
-      frizz: 'Tu rutina prioriza acondicionamiento, gel y sellado de puntas.',
-      definicion: 'Tu rutina prioriza crema de peinar, cepillo definidor y fijación con gel.',
-      encogimiento: 'Tu rutina prioriza estiramiento suave, gel y secado con difusor.',
-      salud: 'Tu rutina equilibra limpieza, hidratación y protección nocturna.'
-    }[profile.goal] || '';
-
-    $('#profileSummary').innerHTML = `
-      <div class="space-y-4">
-        <div class="profile-note"><p class="faint text-xs">Patrón</p><p class="mt-1">${esc(profile.curl_pattern)} · ${esc(PATTERN_LABELS[profile.curl_pattern] || '')}</p></div>
-        <div class="profile-note"><p class="faint text-xs">Porosidad</p><p class="mt-1">${esc(porosityNote)}</p></div>
-        <div class="profile-note"><p class="faint text-xs">Grosor</p><p class="mt-1">${esc(THICKNESS_LABELS[profile.thickness] || profile.thickness)} · ${esc(washNote)}</p></div>
-        <div class="profile-note"><p class="faint text-xs">Objetivo</p><p class="mt-1">${esc(goalNote)}</p></div>
-      </div>`;
   }
 
   /* ---------------- Render: Inventario ---------------- */
@@ -2291,7 +2255,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=18');
+        await navigator.serviceWorker.register('./sw.js?v=19');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
