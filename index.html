@@ -164,6 +164,10 @@
     }
     .nav-btn:active { transform: scale(.96); }
     .nav-btn[data-active="true"] { color: #fafafa; background: rgba(250,250,250,.10); font-weight: 600; }
+    .top-avatar { transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+    .top-avatar:hover { border-color: #a1a1aa; }
+    .top-avatar:active { transform: scale(.94); }
+    .top-avatar[data-active="true"] { border-color: #a1a1aa; box-shadow: 0 0 0 3px rgba(250,250,250,.12); }
     .side-btn {
       display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 13px;
       border-radius: 12px; color: #a1a1aa; font-size: 14px; font-weight: 500; transition: .15s ease;
@@ -401,7 +405,7 @@
           </div>
           <div class="flex items-center gap-3">
             <span class="badge-dot" id="topSyncDot" title="Estado de sincronización"></span>
-            <div id="topAvatar" class="flex h-8 w-8 items-center justify-center rounded-full border border-[#27272a] bg-[#121214] text-xs font-semibold">C</div>
+            <button id="topAvatar" class="top-avatar flex h-8 w-8 items-center justify-center rounded-full border border-[#27272a] bg-[#121214] text-xs font-semibold" type="button" data-nav="perfil" aria-label="Abrir mi perfil" title="Mi perfil">C</button>
           </div>
         </div>
       </header>
@@ -695,7 +699,6 @@
       <nav class="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 lg:hidden" style="padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));" aria-label="Navegación móvil">
         <div class="pointer-events-auto mx-auto flex max-w-lg gap-1 rounded-[20px] border border-[#27272a] bg-[#121214]/95 p-1.5 shadow-[0_18px_45px_rgba(0,0,0,.65)] backdrop-blur-xl">
           <button class="nav-btn" type="button" data-nav="hoy"><span data-nav-icon="hoy"></span><span>Hoy</span></button>
-          <button class="nav-btn" type="button" data-nav="perfil"><span data-nav-icon="perfil"></span><span>Perfil</span></button>
           <button class="nav-btn" type="button" data-nav="inventario"><span data-nav-icon="inventario"></span><span>Inv.</span></button>
           <button class="nav-btn" type="button" data-nav="rutina"><span data-nav-icon="rutina"></span><span>Rutina</span></button>
           <button class="nav-btn" type="button" data-nav="ajustes"><span data-nav-icon="ajustes"></span><span>Ajustes</span></button>
