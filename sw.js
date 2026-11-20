@@ -1,6 +1,6 @@
 /* Curly Tracker · Service Worker
    Caché básica offline + notificaciones locales y push. */
-const CACHE = 'curly-tracker-v9';
+const CACHE = 'curly-tracker-v10';
 const SCOPE = self.registration.scope;
 
 const LOCAL_ASSETS = [
@@ -160,6 +160,28 @@ self.addEventListener('message', (event) => {
     }));
   } else if (data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  } else if (data.type === 'FOCUS_APP') {
+    const port = event.ports && event.ports[0];
+    event.waitUntil((async () => {
+      let focused = false;
+      try {
+        const sourceId = event.source && event.source.id;
+        const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        const others = clients.filter((client) => (
+          client.id !== sourceId && new URL(client.url).origin === self.location.origin
+        ));
+        for (const client of others) {
+          try {
+            await client.focus();
+            focused = true;
+            break;
+          } catch (error) { /* probar otra ventana */ }
+        }
+      } catch (error) { /* sin ventanas */ }
+      if (port) {
+        try { port.postMessage({ focused }); } catch (error) { /* canal cerrado */ }
+      }
+    })());
   }
 });
 

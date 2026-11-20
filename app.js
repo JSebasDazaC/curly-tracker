@@ -10,6 +10,8 @@
   const SUPABASE_ANON_KEY = 'sb_publishable_qByFy6Ocr4UBXmuVztUOIA_e8bxjtIM';
   const LS_KEY = 'curly-tracker:v1';
   const RETURN_TAB_KEY = 'curly_return_tab';
+  const HANDOFF_KEY = 'curly_auth_handoff';
+  const HANDOFF_CHANNEL = 'curly-auth-handoff';
   const AUTH_UNAVAILABLE = 'Supabase no está disponible. Usa el modo local.';
 
   const sb = (window.supabase && window.supabase.createClient)
@@ -515,6 +517,11 @@
   let pendingIdentifier = '';
   let forceProfileSetup = false;
   let authCallbackError = false;
+  let authHandedOff = false;
+  let callbackSession = null;
+  let callbackTab = '';
+  let handoffChannel = null;
+  let lastHandoffToken = '';
   const PENDING_PROFILE_KEY = 'curly-pending-profile';
   const PENDING_SIGNUP_KEY = 'curly-pending-signup';
   let syncState = {
@@ -783,8 +790,18 @@
     try { localStorage.setItem(RETURN_TAB_KEY, currentView); } catch (error) { /* sin almacenamiento */ }
   }
 
+  function readReturnTab() {
+    try { return localStorage.getItem(RETURN_TAB_KEY) || ''; } catch (error) { return ''; }
+  }
+
+  function takeReturnTab() {
+    const tab = readReturnTab();
+    try { localStorage.removeItem(RETURN_TAB_KEY); } catch (error) { /* sin almacenamiento */ }
+    return tab;
+  }
+
   function hasReturnTab() {
-    try { return Boolean(localStorage.getItem(RETURN_TAB_KEY)); } catch (error) { return false; }
+    return Boolean(readReturnTab());
   }
 
   function clearAuthUrl() {
@@ -794,14 +811,84 @@
     window.history.replaceState({}, document.title, url.pathname);
   }
 
-  function restoreReturnTab() {
-    let tab = '';
-    try {
-      tab = localStorage.getItem(RETURN_TAB_KEY) || '';
-      localStorage.removeItem(RETURN_TAB_KEY);
-    } catch (error) { /* sin almacenamiento */ }
+  function restoreReturnTab(tab) {
     clearAuthUrl();
-    if (tab && VIEW_LABELS[tab]) setView(tab);
+    const saved = takeReturnTab();
+    const target = tab || saved;
+    if (target && VIEW_LABELS[target]) setView(target);
+  }
+
+  function publishHandoff(tab) {
+    const token = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const payload = { type: 'AUTH_HANDOFF', token, tab };
+    try { localStorage.setItem(HANDOFF_KEY, JSON.stringify(payload)); } catch (error) { /* sin almacenamiento */ }
+    try { if (handoffChannel) handoffChannel.postMessage(payload); } catch (error) { /* sin canal */ }
+  }
+
+  async function receiveHandoff(payload) {
+    const token = String(payload && payload.token || '');
+    if (!token || token === lastHandoffToken) return;
+    lastHandoffToken = token;
+    try {
+      if (sb) {
+        const { data } = await sb.auth.getSession();
+        if (data && data.session) await enterWithSession(data.session);
+      }
+      if (payload.tab && VIEW_LABELS[payload.tab]) setView(payload.tab);
+      window.focus();
+    } catch (error) { /* la otra ventana continuará igual */ }
+  }
+
+  function listenForHandoff() {
+    try {
+      if ('BroadcastChannel' in window) {
+        handoffChannel = new BroadcastChannel(HANDOFF_CHANNEL);
+        handoffChannel.onmessage = (event) => {
+          const payload = event.data || {};
+          if (payload.type === 'AUTH_HANDOFF') receiveHandoff(payload);
+        };
+      }
+    } catch (error) { /* sin canal */ }
+    window.addEventListener('storage', (event) => {
+      if (event.key !== HANDOFF_KEY || !event.newValue) return;
+      try {
+        const payload = JSON.parse(event.newValue);
+        if (payload.type === 'AUTH_HANDOFF') receiveHandoff(payload);
+      } catch (error) { /* ignorar */ }
+    });
+  }
+
+  function focusExistingApp() {
+    if (!('serviceWorker' in navigator)) return Promise.resolve(false);
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        resolve(Boolean(value));
+      };
+      const channel = new MessageChannel();
+      channel.port1.onmessage = (event) => {
+        finish(event.data && event.data.focused);
+        try { channel.port1.close(); } catch (error) { /* ignorar */ }
+      };
+      const send = (worker) => {
+        if (!worker) { finish(false); return; }
+        try { worker.postMessage({ type: 'FOCUS_APP' }, [channel.port2]); }
+        catch (error) { finish(false); }
+      };
+      setTimeout(() => {
+        finish(false);
+        try { channel.port1.close(); } catch (error) { /* ignorar */ }
+      }, 1200);
+      if (navigator.serviceWorker.controller) send(navigator.serviceWorker.controller);
+      else navigator.serviceWorker.ready.then((registration) => send(registration.active)).catch(() => finish(false));
+    });
+  }
+
+  async function handoffToExistingApp(tab) {
+    publishHandoff(tab);
+    return focusExistingApp();
   }
 
   function renderCurrentView() {
@@ -1813,11 +1900,14 @@
     return 'No pudimos verificar el enlace. Solicita otro.';
   }
 
-  function showAuthCallbackPanel(title, message, isError) {
+  function showAuthCallbackPanel(title, message, isError, canContinue) {
     showAuthPanel('callback');
     $('#authCallbackTitle').textContent = title;
     $('#authCallbackMessage').textContent = message;
-    $('#authCallbackActions').hidden = !isError;
+    $('#authCallbackActions').hidden = !isError && !canContinue;
+    $('#authCallbackBackBtn').hidden = !isError;
+    const continueBtn = $('#authCallbackContinueBtn');
+    if (continueBtn) continueBtn.hidden = !canContinue;
     const mark = $('#callbackMark');
     if (mark) mark.innerHTML = curlMark('h-6 w-6');
   }
@@ -1836,6 +1926,7 @@
 
     if (!errorCode && !tokenHash && !accessToken && !code) return false;
 
+    const returnTab = takeReturnTab();
     showAuthCallbackPanel('Verificando el enlace…', 'Activando tu cuenta.', false);
     let failureCode = errorCode;
     try {
@@ -1860,9 +1951,18 @@
         sessionStorage.removeItem(PENDING_SIGNUP_KEY);
       } catch (error) { /* sin sesión */ }
       clearAuthUrl();
-      showAuthPanel('main');
-      await enterWithSession(session);
-      restoreReturnTab();
+      const handedOff = await handoffToExistingApp(returnTab);
+      if (handedOff) {
+        authHandedOff = true;
+        callbackSession = session;
+        callbackTab = returnTab;
+        showLogin();
+        showAuthCallbackPanel('Sesión activada', 'Continúa en la ventana de Curly Tracker.', false, true);
+        setTimeout(() => { try { window.close(); } catch (error) { /* ignorar */ } }, 500);
+      } else {
+        await enterWithSession(session);
+        restoreReturnTab(returnTab);
+      }
     } catch (error) {
       clearAuthUrl();
       failureCode = failureCode || (error && (error.code || error.message));
@@ -2054,14 +2154,14 @@
       return;
     }
     const { data } = await sb.auth.getSession();
-    if (authCallbackError) showLogin();
+    if (authCallbackError || authHandedOff) showLogin();
     else if (data && data.session) {
       await enterWithSession(data.session);
       if (hasReturnTab()) restoreReturnTab();
     } else showLogin();
 
     sb.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
+      if (event === 'SIGNED_IN' && session && !authHandedOff) {
         authCallbackError = false;
         enterWithSession(session);
         if (hasReturnTab()) restoreReturnTab();
@@ -2486,6 +2586,16 @@
 
     $('#changeEmailBtn').addEventListener('click', () => { backToIdentify(); $('#authIdentifier').focus(); });
     $('#authCallbackBackBtn').addEventListener('click', backToIdentify);
+    $('#authCallbackContinueBtn').addEventListener('click', async () => {
+      if (!callbackSession) return;
+      const session = callbackSession;
+      const tab = callbackTab;
+      callbackSession = null;
+      callbackTab = '';
+      authHandedOff = false;
+      await enterWithSession(session);
+      restoreReturnTab(tab);
+    });
 
     $('#reenviarLinkBtn').addEventListener('click', async (event) => {
       const button = event.currentTarget;
@@ -2546,6 +2656,7 @@
     Notifications.start();
     startCrossDeviceSync();
     renderAuthForm();
+    listenForHandoff();
     handleAuthRedirect().then(() => initAuth());
   }
 
