@@ -166,5 +166,24 @@ drop policy if exists "logs_delete_own" on public.schedule_logs;
 create policy "logs_delete_own" on public.schedule_logs
   for delete to authenticated using (auth.uid() = user_id);
 
+-- ---------- Realtime (sincronización entre dispositivos) ----------
+-- La app se suscribe a cambios de estas tablas filtrando por auth.uid().
+-- Si ya están en la publicación, no se hace nada (seguro volver a ejecutar).
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['user_profile', 'products', 'tools', 'schedule_logs'] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;
+
 -- Nota: la app funciona en modo local aunque estas tablas no existan todavía.
 -- Cuando se crean, los datos locales se envían a la nube en la primera sincronización.
+-- Las herramientas se identifican por (user_id, name) para que el mismo preset
+-- sea la misma fila en todos los dispositivos.

@@ -8,7 +8,7 @@ PWA monocromática para el control capilar masculino: perfil de rizo, inventario
 - **PWA**: `manifest.json` con `display: standalone`, tema `#09090b` e ícono SVG minimalista; `sw.js` con caché offline básica, recordatorios y manejo de `push`/`notificationclick`.
 - **Notificaciones**: permiso con `Notification.requestPermission()`, hora configurable, aviso diario basado en el plan del día y notificación de prueba.
 - **Autenticación**: Google OAuth y email/contraseña con Supabase (`@supabase/supabase-js` vía CDN).
-- **Sincronización**: `user_profile`, `products`, `tools` y `schedule_logs` con RLS por `auth.uid()`. Si las tablas aún no existen o no hay sesión, la app sigue funcionando en **modo local** (localStorage).
+- **Sincronización**: `user_profile`, `products`, `tools` y `schedule_logs` con RLS por `auth.uid()`. Los cambios hechos en cualquier dispositivo se suben y se reciben en los demás mediante **Supabase Realtime**; al volver del segundo plano también se refresca automáticamente. Si las tablas aún no existen o no hay sesión, la app sigue funcionando en **modo local** (localStorage).
 - **Módulos**:
   1. Perfil capilar (patrón 2C–4A, porosidad, grosor y objetivo).
   2. Inventario de 6 categorías de productos con estados, etiquetas de componentes e indicador de compatibilidad; 9 herramientas esenciales precargadas más herramientas personalizadas.
@@ -25,10 +25,11 @@ PWA monocromática para el control capilar masculino: perfil de rizo, inventario
 ## Configurar Supabase
 
 1. Entra en [Supabase](https://supabase.com/) y abre el proyecto.
-2. Ve a **SQL Editor → New query**, pega todo `schema.sql` y pulsa **Run**.
+2. Ve a **SQL Editor → New query**, pega todo `schema.sql` y pulsa **Run** (incluye las cuatro tablas, RLS y su inclusión en la publicación `supabase_realtime` para que la sincronización entre dispositivos funcione).
 3. Activa Google en **Authentication → Providers → Google** y añade como *Redirect URL* la URL de tu despliegue (y `http://localhost:5500` para Live Server; ajusta el puerto al de tu servidor).
 4. En **Authentication → URL Configuration**, añade la misma URL a *Site URL* y *Redirect URLs*.
 5. Recarga la app e inicia sesión. Los datos locales se suben automáticamente en la primera sincronización.
+6. Si ya tenías la PWA instalada, ciérrala y ábrela de nuevo para que descargue la versión con Realtime (el Service Worker se actualiza solo).
 
 Las credenciales (URL y clave publishable) ya están configuradas en `app.js`. Son públicas por diseño; la seguridad de los datos la garantizan las políticas RLS de `schema.sql`.
 

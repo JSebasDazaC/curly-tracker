@@ -481,7 +481,16 @@
   let editingProductId = null;
   let modalIngredients = [];
   let authMode = 'login';
-  let syncState = { ready: false, session: null, timer: null, syncing: false, errorShown: false };
+  let syncState = {
+    ready: false,
+    session: null,
+    timer: null,
+    syncing: false,
+    errorShown: false,
+    channel: null,
+    remoteTimer: null,
+    lastPull: 0
+  };
   let lastEnteredUser = null;
 
   function saveLocal() {
@@ -1325,8 +1334,8 @@
     };
   }
 
-  async function loadCloud(session) {
-    if (!sb) return;
+  async function pullCloud(session, options = {}) {
+    if (!sb || !session) return false;
     const userId = session.user.id;
     const [profileRes, productsRes, toolsRes, logsRes] = await Promise.all([
       sb.from('user_profile').select('*').eq('user_id', userId).maybeSingle(),
@@ -1339,7 +1348,7 @@
     if (failed) {
       setSyncState(false, session);
       console.warn('Curly Tracker: tablas no disponibles, se usa modo local.', { profileRes, productsRes, toolsRes, logsRes });
-      return;
+      return false;
     }
 
     if (profileRes.data) {
@@ -1348,18 +1357,69 @@
       state.settings.reminderEnabled = profile.reminder_enabled;
       state.settings.reminderTime = profile.reminder_time;
     }
-    if (productsRes.data && productsRes.data.length) state.products = productsRes.data.map(mapProduct);
-    if (toolsRes.data && toolsRes.data.length) state.tools = mergeTools(toolsRes.data);
-    if (logsRes.data && logsRes.data.length) {
-      const remoteLogs = {};
-      logsRes.data.forEach((row) => { remoteLogs[row.log_date] = mapLog(row); });
-      state.logs = Object.assign({}, state.logs, remoteLogs);
-    }
+    state.products = (productsRes.data || []).map(mapProduct);
+    state.tools = mergeTools(toolsRes.data || []);
+    const remoteLogs = {};
+    (logsRes.data || []).forEach((row) => { remoteLogs[row.log_date] = mapLog(row); });
+    state.logs = remoteLogs;
 
     saveLocal();
+    syncState.lastPull = Date.now();
     setSyncState(true, session);
     renderAll();
-    await pushCloud(false);
+
+    const hasRemote = Boolean(profileRes.data || productsRes.data?.length || toolsRes.data?.length || logsRes.data?.length);
+    if (!hasRemote) await pushCloud(false);
+    else if (options.toast) toast('Datos actualizados desde la nube');
+    return true;
+  }
+
+  function scheduleRemotePull(session) {
+    if (!syncState.ready || !session) return;
+    clearTimeout(syncState.remoteTimer);
+    syncState.remoteTimer = setTimeout(() => {
+      if (syncState.session && syncState.session.user.id === session.user.id) {
+        pullCloud(session).catch((error) => console.warn('Curly Tracker: no se pudo refrescar.', error));
+      }
+    }, 350);
+  }
+
+  function subscribeRealtime(session) {
+    if (!sb || !session) return;
+    const userId = session.user.id;
+    if (syncState.channel && syncState.channel.topic.endsWith(userId)) return;
+    if (syncState.channel) sb.removeChannel(syncState.channel);
+
+    const onChange = () => scheduleRemotePull(session);
+    const channel = sb.channel('curly-sync:' + userId);
+    ['user_profile', 'products', 'tools', 'schedule_logs'].forEach((table) => {
+      channel.on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table,
+        filter: `user_id=eq.${userId}`
+      }, onChange);
+    });
+    channel.subscribe();
+    syncState.channel = channel;
+  }
+
+  function unsubscribeRealtime() {
+    clearTimeout(syncState.remoteTimer);
+    if (syncState.channel && sb) sb.removeChannel(syncState.channel);
+    syncState.channel = null;
+  }
+
+  // Respaldo cuando el WebSocket de Realtime se duerme (PWA en segundo plano).
+  function startCrossDeviceSync() {
+    const refresh = () => {
+      if (!syncState.session || !syncState.ready || document.hidden) return;
+      if ($('#modalRoot').innerHTML) return;
+      pullCloud(syncState.session).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+    window.addEventListener('focus', refresh);
+    setInterval(refresh, 60000);
   }
 
   async function pushCloud(showToast) {
@@ -1402,23 +1462,24 @@
         if (result.error) throw result.error;
       }
 
+      // Las herramientas son iguales en todos los dispositivos: se identifican por
+      // (user_id, name), no por un ID local generado al azar en cada equipo.
       const tools = state.tools.map((tool) => ({
-        id: isUuid(tool.id) ? tool.id : uid(),
         user_id: userId,
         name: tool.name,
         owned: tool.owned,
         preset: tool.preset
       }));
-      const remoteTools = await sb.from('tools').select('id').eq('user_id', userId);
+      const remoteTools = await sb.from('tools').select('id,name').eq('user_id', userId);
       if (remoteTools.error) throw remoteTools.error;
-      const toolIds = new Set(tools.map((item) => item.id));
-      const staleTools = (remoteTools.data || []).map((row) => row.id).filter((id) => !toolIds.has(id));
+      const toolNames = new Set(tools.map((item) => item.name));
+      const staleTools = (remoteTools.data || []).filter((row) => !toolNames.has(row.name)).map((row) => row.id);
       if (staleTools.length) {
         result = await sb.from('tools').delete().in('id', staleTools).eq('user_id', userId);
         if (result.error) throw result.error;
       }
       if (tools.length) {
-        result = await sb.from('tools').upsert(tools, { onConflict: 'id' });
+        result = await sb.from('tools').upsert(tools, { onConflict: 'user_id,name' });
         if (result.error) throw result.error;
       }
 
@@ -1478,8 +1539,9 @@
     if (lastEnteredUser === userId && syncState.ready) return;
     lastEnteredUser = userId;
     setSyncState(false, session);
-    await loadCloud(session);
+    await pullCloud(session);
     renderAll();
+    if (syncState.ready) subscribeRealtime(session);
   }
 
   async function initAuth() {
@@ -1497,6 +1559,7 @@
       if (event === 'SIGNED_IN' && session) {
         enterWithSession(session);
       } else if (event === 'SIGNED_OUT') {
+        unsubscribeRealtime();
         syncState.ready = false;
         lastEnteredUser = null;
         showLogin();
@@ -1824,14 +1887,20 @@
     $('#askPermissionBtn').addEventListener('click', () => Notifications.requestPermission());
     $('#testNotifBtn').addEventListener('click', () => Notifications.test());
 
-    $('#forceSyncBtn').addEventListener('click', () => {
+    $('#forceSyncBtn').addEventListener('click', async () => {
       if (!syncState.session) { toast('Inicia sesión para sincronizar'); return; }
-      if (!syncState.ready) { loadCloud(syncState.session).then(() => pushCloud(true)); return; }
-      pushCloud(true);
+      if (!syncState.ready) {
+        await pushCloud(true);
+        if (syncState.ready) subscribeRealtime(syncState.session);
+        return;
+      }
+      await pullCloud(syncState.session, { toast: true });
+      subscribeRealtime(syncState.session);
     });
 
     $('#signOutBtn').addEventListener('click', async () => {
       if (sb) await sb.auth.signOut();
+      unsubscribeRealtime();
       syncState.ready = false;
       lastEnteredUser = null;
       showLogin();
@@ -1946,6 +2015,7 @@
     else setView('hoy');
 
     Notifications.start();
+    startCrossDeviceSync();
     initAuth();
   }
 

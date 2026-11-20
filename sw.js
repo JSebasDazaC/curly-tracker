@@ -1,6 +1,6 @@
 /* Curly Tracker · Service Worker
    Caché básica offline + notificaciones locales y push. */
-const CACHE = 'curly-tracker-v2';
+const CACHE = 'curly-tracker-v3';
 const SCOPE = self.registration.scope;
 
 const LOCAL_ASSETS = [
