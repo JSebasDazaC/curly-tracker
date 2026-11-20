@@ -603,9 +603,6 @@
   let authStep = 'identify';
   let pendingIdentifier = '';
   let forceProfileSetup = false;
-  let profileEditing = false;
-  let profileUsernameHint = '3–20 caracteres: letras, números, punto o guion bajo.';
-  let profileUsernameHintOk = true;
   let authCallbackError = false;
   const PENDING_PROFILE_KEY = 'curly-pending-profile';
   const PENDING_SIGNUP_KEY = 'curly-pending-signup';
@@ -873,7 +870,7 @@
     $$('[data-view]').forEach((section) => {
       section.classList.toggle('hidden', section.dataset.view !== currentView);
     });
-    if (currentView !== 'perfil' && profileEditing) setProfileEditing(false);
+    if (currentView !== 'perfil') cancelInlineEdit();
     renderNav();
     renderCurrentView();
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -913,7 +910,7 @@
 
   function renderCurrentView() {
     switch (currentView) {
-      case 'perfil': renderProfile(); break;
+      case 'perfil': renderProfile(); renderNav(); break;
       case 'inventario': renderInventory(); break;
       case 'rutina': renderRoutine(); break;
       case 'ajustes': renderSettings(); break;
@@ -1014,13 +1011,29 @@
     return String(source).trim().charAt(0).toUpperCase() || 'C';
   }
 
-  function profileSelectField(id, label, options, selected) {
-    return `<div>
-      <label class="label" for="${id}">${esc(label)}</label>
-      <select class="field" id="${id}">
-        ${options.map(([value, text]) => `<option value="${esc(value)}"${value === selected ? ' selected' : ''}>${esc(text)}</option>`).join('')}
-      </select>
-    </div>`;
+  const INLINE_FIELDS = {
+    first_name: { label: 'Nombre', placeholder: 'Añade tu nombre', max: 40, type: 'text' },
+    last_name: { label: 'Apellido', placeholder: 'Añade tu apellido', max: 40, type: 'text' },
+    username: { label: 'usuario único', placeholder: 'tu.usuario', max: 20, type: 'text', prefix: '@' },
+    display_name: { label: 'nombre a mostrar', placeholder: 'Tu nombre', max: 80, type: 'text' },
+    bio: { label: 'biografía', placeholder: 'Cuéntanos algo sobre tu rutina...', max: 160, type: 'textarea' },
+    curl_pattern: { label: 'patrón de rizo', type: 'select', options: [['2C', '2C · Ondas definidas'], ['3A', '3A · Rizos sueltos'], ['3B', '3B · Rizos medianos'], ['3C', '3C · Rizos apretados'], ['4A', '4A · Rizos muy apretados']] },
+    porosity: { label: 'porosidad', type: 'select', options: [['baja', 'Baja · Absorbe despacio'], ['media', 'Media · Equilibrada'], ['alta', 'Alta · Absorbe rápido']] },
+    thickness: { label: 'grosor del cabello', type: 'select', options: [['fino', 'Fino'], ['medio', 'Medio'], ['grueso', 'Grueso']] },
+    goal: { label: 'objetivo actual', type: 'select', options: [['frizz', 'Control de frizz'], ['definicion', 'Definición'], ['encogimiento', 'Controlar encogimiento'], ['salud', 'Salud general']] }
+  };
+
+  let inlineEdit = null;
+
+  function inlineAttrs(field) {
+    const meta = INLINE_FIELDS[field];
+    return `data-inline-field="${field}" tabindex="0" role="button" title="Editar ${esc(meta.label)}"`;
+  }
+
+  function inlineText(field, value, cls = '') {
+    const meta = INLINE_FIELDS[field];
+    const content = value ? esc(value) : `<span class="faint">${esc(meta.placeholder || 'Editar')}</span>`;
+    return `<span class="inline-editable ${cls}" ${inlineAttrs(field)}>${meta.prefix ? esc(meta.prefix) : ''}${content}</span>`;
   }
 
   function updateHeroImages() {
@@ -1032,23 +1045,22 @@
     if (avatar) avatar.textContent = state.profile.avatar_url ? '' : avatarInitial();
   }
 
-  function renderProfileHero(force = false) {
+  function renderProfileHero() {
     const holder = $('#socialProfileCard');
     if (!holder) return;
-    if (profileEditing && holder.dataset.mode === 'edit' && !force) {
-      updateHeroImages();
-      return;
-    }
-    holder.dataset.mode = profileEditing ? 'edit' : 'view';
+    if (inlineEdit) { updateHeroImages(); return; }
     const p = state.profile;
     const bannerStyle = p.banner_url ? `background-image:url('${cssUrlAttr(p.banner_url)}')` : '';
     const avatarStyle = p.avatar_url ? `background-image:url('${cssUrlAttr(p.avatar_url)}')` : '';
-    const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
-    const shownName = displayName();
-    const showFullName = Boolean(fullName) && fullName !== shownName;
-    const chips = p.username && shownName !== '@' + p.username
-      ? `<span class="chip">@${esc(p.username)}</span>`
-      : '';
+    const fullNameHtml = (p.first_name || p.last_name)
+      ? [inlineText('first_name', p.first_name), inlineText('last_name', p.last_name)].join(' ')
+      : `<span class="inline-editable faint" ${inlineAttrs('first_name')}>Añade tu nombre</span>`;
+    const shownName = p.display_name ? esc(p.display_name)
+      : `<span class="faint">${esc(displayName())}</span>`;
+    const bioHtml = p.bio ? esc(p.bio) : '<span class="faint">Añade una biografía</span>';
+    const usernameHtml = p.username
+      ? `<span class="chip inline-editable" ${inlineAttrs('username')}>@${esc(p.username)}</span>`
+      : `<span class="chip faint inline-editable" ${inlineAttrs('username')}>Añade tu usuario</span>`;
     const profileFields = [p.first_name, p.last_name, p.username, p.display_name, p.bio, p.avatar_url, p.banner_url, p.curl_pattern, p.porosity, p.thickness, p.goal];
     const completePercent = Math.round(profileFields.filter(Boolean).length / profileFields.length * 100);
     const progressHtml = `
@@ -1061,82 +1073,142 @@
       </div>`;
     const editFab = (kind, position, label) => `<button class="profile-edit-fab absolute ${position}" type="button" data-image-edit="${kind}" aria-label="${label}" title="${label}">${icon('edit', 'h-4 w-4')}</button>`;
 
-    if (!profileEditing) {
-      holder.innerHTML = `
-        <div class="profile-banner h-28 sm:h-40"${bannerStyle ? ` style="${bannerStyle}"` : ''} data-hero-banner></div>
-        <div class="px-5 pb-5 sm:px-6">
-          <div class="-mt-10 flex items-end justify-between gap-3">
-            <div class="profile-avatar flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-[#121214] text-2xl font-semibold sm:h-24 sm:w-24"${avatarStyle ? ` style="${avatarStyle}"` : ''} data-hero-avatar role="img" aria-label="Foto de perfil">${p.avatar_url ? '' : esc(avatarInitial())}</div>
-            <button class="btn-ghost btn-mini" type="button" data-action="edit-profile">${icon('edit', 'h-3.5 w-3.5')}Editar perfil</button>
-          </div>
-          <h2 class="mt-3 break-words text-2xl font-semibold leading-snug">${esc(shownName)}</h2>
-          ${showFullName ? `<p class="mt-0.5 truncate text-sm muted">${esc(fullName)}</p>` : ''}
-          ${p.bio ? `<p class="mt-3 max-w-2xl text-sm leading-relaxed text-[#d4d4d8]">${esc(p.bio)}</p>` : ''}
-          ${chips ? `<div class="mt-4 flex flex-wrap gap-2">${chips}</div>` : ''}
-          ${progressHtml}
-        </div>`;
-      return;
-    }
-
     holder.innerHTML = `
       <div class="relative">
         <div class="profile-banner h-28 sm:h-40"${bannerStyle ? ` style="${bannerStyle}"` : ''} data-hero-banner></div>
         ${editFab('banner', 'right-4 top-4', 'Editar banner')}
       </div>
       <div class="px-5 pb-5 sm:px-6">
-        <div class="-mt-10 flex items-start justify-between gap-3">
+        <div class="-mt-10 flex items-end justify-between gap-3">
           <div class="relative shrink-0">
             <div class="profile-avatar flex h-20 w-20 items-center justify-center rounded-full border-4 border-[#121214] text-2xl font-semibold sm:h-24 sm:w-24"${avatarStyle ? ` style="${avatarStyle}"` : ''} data-hero-avatar role="img" aria-label="Foto de perfil">${p.avatar_url ? '' : esc(avatarInitial())}</div>
             ${editFab('avatar', '-right-1 bottom-1', 'Editar foto de perfil')}
           </div>
-          <div class="flex flex-wrap justify-end gap-2">
-            <button class="btn-ghost btn-mini" type="button" data-action="cancel-profile">Cancelar</button>
-            <button class="btn-primary btn-mini" type="button" data-action="save-profile">Guardar</button>
-          </div>
+          <p class="max-w-[55%] text-right text-sm muted">${fullNameHtml}</p>
         </div>
-        <p class="label mt-5">Edición directa</p>
-        <p class="mt-1 text-xs muted">Cambia los datos aquí mismo y guarda cuando termines.</p>
-        <div class="mt-4 grid gap-3 sm:grid-cols-2">
-          <div>
-            <label class="label" for="profileFirstName">Nombre</label>
-            <input class="field" id="profileFirstName" type="text" autocomplete="given-name" placeholder="Tu nombre" maxlength="40" value="${esc(p.first_name)}" />
-          </div>
-          <div>
-            <label class="label" for="profileLastName">Apellido</label>
-            <input class="field" id="profileLastName" type="text" autocomplete="family-name" placeholder="Tu apellido" maxlength="40" value="${esc(p.last_name)}" />
-          </div>
-          <div>
-            <label class="label" for="profileUsername">Usuario único</label>
-            <input class="field" id="profileUsername" type="text" autocomplete="username" placeholder="tu.usuario" maxlength="20" value="${esc(p.username)}" />
-            <p id="profileUsernameStatus" class="mt-1.5 text-xs ${profileUsernameHintOk ? 'hint-ok' : 'hint-error'}">${esc(profileUsernameHint)}</p>
-          </div>
-          <div>
-            <label class="label" for="profileDisplayName">Nombre a mostrar</label>
-            <div class="flex items-center gap-2">
-              <input class="field" id="profileDisplayName" type="text" placeholder="Pega aquí tu nombre decorativo" maxlength="80" value="${esc(p.display_name)}" />
-              <button class="profile-edit-fab shrink-0" type="button" data-action="focus-display-name" aria-label="Editar nombre a mostrar" title="Editar nombre a mostrar">${icon('edit', 'h-4 w-4')}</button>
-            </div>
-          </div>
-        </div>
-        <div class="mt-3">
-          <label class="label" for="profileBio">Biografía</label>
-          <textarea class="field" id="profileBio" rows="2" maxlength="160" placeholder="Cuéntanos algo sobre tu rutina...">${esc(p.bio)}</textarea>
-        </div>
-        <div class="hairline my-5"></div>
-        <p class="label">Perfil capilar</p>
-        <div class="mt-3 grid gap-3 sm:grid-cols-2">
-          ${profileSelectField('profilePattern', 'Patrón de rizo', [['2C','2C · Ondas definidas'],['3A','3A · Rizos sueltos'],['3B','3B · Rizos medianos'],['3C','3C · Rizos apretados'],['4A','4A · Rizos muy apretados']], p.curl_pattern)}
-          ${profileSelectField('profilePorosity', 'Porosidad', [['baja','Baja · Absorbe despacio'],['media','Media · Equilibrada'],['alta','Alta · Absorbe rápido']], p.porosity)}
-          ${profileSelectField('profileThickness', 'Grosor del cabello', [['fino','Fino'],['medio','Medio'],['grueso','Grueso']], p.thickness)}
-          ${profileSelectField('profileGoal', 'Objetivo actual', [['frizz','Control de frizz'],['definicion','Definición'],['encogimiento','Controlar encogimiento'],['salud','Salud general']], p.goal)}
-        </div>
+        <h2 class="mt-3 break-words text-2xl font-semibold leading-snug inline-editable" ${inlineAttrs('display_name')}>${shownName}</h2>
+        <p class="mt-3 max-w-2xl text-sm leading-relaxed text-[#d4d4d8] inline-editable" ${inlineAttrs('bio')}>${bioHtml}</p>
+        <div class="mt-4 flex flex-wrap gap-2">${usernameHtml}</div>
         ${progressHtml}
       </div>`;
-    initSelects(holder);
   }
 
   function renderProfileImages() {
     updateHeroImages();
+  }
+
+  function beginInlineEdit(node) {
+    if (inlineEdit) cancelInlineEdit();
+    const field = node.dataset.inlineField;
+    const meta = INLINE_FIELDS[field];
+    if (!meta) return;
+    const original = field === 'display_name'
+      ? (state.profile.display_name || displayName())
+      : (state.profile[field] || '');
+    const originalHtml = node.innerHTML;
+    node.classList.add('inline-editing');
+
+    const wrap = document.createElement('span');
+    wrap.className = 'inline-edit-wrap';
+    let input;
+    if (meta.type === 'select') {
+      input = document.createElement('select');
+      meta.options.forEach(([value, label]) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        input.appendChild(option);
+      });
+      input.value = original;
+    } else if (meta.type === 'textarea') {
+      input = document.createElement('textarea');
+      input.rows = 2;
+      input.value = original;
+    } else {
+      input = document.createElement('input');
+      input.type = 'text';
+      input.value = original;
+      input.maxLength = meta.max || 80;
+    }
+    input.className = 'inline-input';
+    input.setAttribute('aria-label', meta.label);
+    if (meta.placeholder) input.placeholder = meta.placeholder;
+
+    const actions = document.createElement('span');
+    actions.className = 'inline-actions';
+    actions.innerHTML = `<button type="button" data-inline-save title="Guardar" aria-label="Guardar">${icon('check', 'h-3.5 w-3.5')}</button><button type="button" data-inline-cancel title="Cancelar" aria-label="Cancelar">${icon('close', 'h-3.5 w-3.5')}</button>`;
+    wrap.append(input, actions);
+    node.innerHTML = '';
+    node.appendChild(wrap);
+
+    inlineEdit = { field, node, input, original, originalHtml };
+    input.focus();
+    if (input.select) input.select();
+    input.addEventListener('blur', () => { if (inlineEdit && inlineEdit.input === input) commitInlineEdit(); });
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); cancelInlineEdit(); }
+      else if (event.key === 'Enter' && (meta.type !== 'textarea' || event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        commitInlineEdit();
+      }
+    });
+    if (meta.type === 'select') input.addEventListener('change', () => commitInlineEdit());
+    const saveBtn = $('[data-inline-save]', actions);
+    const cancelBtn = $('[data-inline-cancel]', actions);
+    saveBtn.addEventListener('mousedown', (event) => event.preventDefault());
+    cancelBtn.addEventListener('mousedown', (event) => event.preventDefault());
+    saveBtn.addEventListener('click', () => commitInlineEdit());
+    cancelBtn.addEventListener('click', cancelInlineEdit);
+  }
+
+  function restoreInlineNode(edit) {
+    edit.node.innerHTML = edit.originalHtml;
+    edit.node.classList.remove('inline-editing');
+  }
+
+  function cancelInlineEdit() {
+    if (!inlineEdit) return;
+    const edit = inlineEdit;
+    inlineEdit = null;
+    restoreInlineNode(edit);
+  }
+
+  async function commitInlineEdit() {
+    if (!inlineEdit) return;
+    const edit = inlineEdit;
+    inlineEdit = null;
+    const meta = INLINE_FIELDS[edit.field];
+    let value = String(edit.input.value || '').trim();
+    if (edit.field === 'username') {
+      value = sanitizeUsername(value);
+      if (!validUsername(value)) {
+        toast('Usuario no válido (3–20 caracteres)');
+        inlineEdit = edit;
+        edit.input.focus();
+        return;
+      }
+      if (!(await isUsernameAvailable(value))) {
+        toast('Ese usuario ya está en uso');
+        inlineEdit = edit;
+        edit.input.focus();
+        return;
+      }
+      if (inlineEdit && inlineEdit !== edit) return;
+    }
+    restoreInlineNode(edit);
+    if (value === edit.original) return;
+    state.profile[edit.field] = value;
+    persist();
+    renderAll();
+    if (sb && syncState.session && ['first_name', 'last_name', 'username', 'display_name', 'bio'].includes(edit.field)) {
+      sb.auth.updateUser({ data: {
+        first_name: state.profile.first_name, last_name: state.profile.last_name,
+        username: state.profile.username, display_name: state.profile.display_name,
+        bio: state.profile.bio
+      } }).catch(() => {});
+    }
+    if (syncState.ready) pushCloud(true);
+    toast(`${meta.label} actualizado`);
   }
 
   function renderProfileReadonly() {
@@ -1158,37 +1230,32 @@
       salud: 'Limpieza, hidratación y protección nocturna equilibradas.'
     }[p.goal] || '';
     const features = [
-      ['spark', 'Patrón', `${p.curl_pattern} · ${PATTERN_LABELS[p.curl_pattern] || ''}`, 'Define la frecuencia de lavado y las técnicas.'],
-      ['drop', 'Porosidad', POROSITY_LABELS[p.porosity] || p.porosity, porosityNote],
-      ['tool', 'Grosor', THICKNESS_LABELS[p.thickness] || p.thickness, washNote],
-      ['star', 'Objetivo', GOAL_LABELS[p.goal] || p.goal, goalNote]
+      ['spark', 'Patrón', 'curl_pattern', `${p.curl_pattern} · ${PATTERN_LABELS[p.curl_pattern] || ''}`, 'Define la frecuencia de lavado y las técnicas.'],
+      ['drop', 'Porosidad', 'porosity', POROSITY_LABELS[p.porosity] || p.porosity, porosityNote],
+      ['tool', 'Grosor', 'thickness', THICKNESS_LABELS[p.thickness] || p.thickness, washNote],
+      ['star', 'Objetivo', 'goal', GOAL_LABELS[p.goal] || p.goal, goalNote]
     ];
     $('#profileHairReadonly').innerHTML = `
       <div class="grid gap-3 sm:grid-cols-2">
-        ${features.map(([glyph, label, value, note]) => `
+        ${features.map(([glyph, label, field, value, note]) => `
           <div class="profile-feature">
             <div class="flex items-center gap-2 faint">
               ${icon(glyph, 'h-4 w-4')}
               <span class="text-[11px] uppercase tracking-wider">${esc(label)}</span>
             </div>
-            <p class="profile-feature-value">${esc(value || '—')}</p>
+            <p class="profile-feature-value inline-editable" ${inlineAttrs(field)}>${esc(value || '—')}</p>
             <p class="mt-1 text-xs muted">${esc(note)}</p>
           </div>`).join('')}
       </div>`;
   }
 
-  function setProfileEditing(editing) {
-    profileEditing = Boolean(editing);
-    if (!profileEditing) {
-      profileUsernameHint = '3–20 caracteres: letras, números, punto o guion bajo.';
-      profileUsernameHintOk = true;
-    }
-    closeAllSelects();
-    renderProfileHero(true);
-    if (profileEditing) setTimeout(() => { const node = $('#profileFirstName'); if (node) node.focus(); }, 0);
-  }
-
   function renderProfile() {
+    if (inlineEdit) {
+      updateHeroImages();
+      renderAccount();
+      renderSyncStatus();
+      return;
+    }
     renderProfileImages();
     renderProfileReadonly();
     renderProfileHero();
@@ -2160,15 +2227,6 @@
     }
   }
 
-  function setProfileUsernameStatus(message, ok) {
-    profileUsernameHint = message;
-    profileUsernameHintOk = Boolean(ok);
-    const node = $('#profileUsernameStatus');
-    if (!node) return;
-    node.textContent = message;
-    node.className = 'mt-1.5 text-xs ' + (profileUsernameHintOk ? 'hint-ok' : 'hint-error');
-  }
-
   function showAuthPanel(panel) {
     $('#authMainPanel').hidden = panel !== 'main';
     $('#authLinkSentPanel').hidden = panel !== 'sent';
@@ -2557,42 +2615,6 @@
     toast(kind === 'avatar' ? 'Foto eliminada' : 'Banner eliminado');
   }
 
-  async function saveProfileFromInputs() {
-    const username = sanitizeUsername($('#profileUsername').value);
-    if (!validUsername(username)) {
-      setProfileUsernameStatus('Usuario no válido.', false);
-      toast('Revisa el usuario (3–20 caracteres)');
-      return;
-    }
-    if (!(await isUsernameAvailable(username))) {
-      setProfileUsernameStatus('Ese usuario ya está en uso.', false);
-      toast('Ese usuario ya está en uso');
-      return;
-    }
-    setProfileUsernameStatus('Usuario disponible.', true);
-    state.profile = normalizeProfile(Object.assign({}, state.profile, {
-      first_name: $('#profileFirstName').value.trim(),
-      last_name: $('#profileLastName').value.trim(),
-      username,
-      display_name: $('#profileDisplayName').value.trim(),
-      bio: $('#profileBio').value.trim(),
-      curl_pattern: $('#profilePattern').value,
-      porosity: $('#profilePorosity').value,
-      thickness: $('#profileThickness').value,
-      goal: $('#profileGoal').value
-    }));
-    persist();
-    renderAll();
-    if (sb && syncState.session) sb.auth.updateUser({ data: {
-      first_name: state.profile.first_name, last_name: state.profile.last_name,
-      username: state.profile.username, display_name: state.profile.display_name,
-      bio: state.profile.bio
-    } }).catch(() => {});
-    if (syncState.ready) pushCloud(true);
-    setProfileEditing(false);
-    toast('Perfil guardado');
-  }
-
   async function enterWithSession(session) {
     showApp();
     const userId = session && session.user && session.user.id;
@@ -2654,7 +2676,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=27');
+        await navigator.serviceWorker.register('./sw.js?v=28');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
@@ -2779,6 +2801,8 @@
   document.addEventListener('click', (event) => {
     const target = event.target;
 
+    if (target.closest('.inline-actions')) return;
+
     const selectTrigger = target.closest('.select-trigger');
     if (selectTrigger) { toggleSelect(selectTrigger); return; }
 
@@ -2850,19 +2874,9 @@
 
     if (!target.closest('.custom-select') && !target.closest('.custom-picker')) closeAllSelects();
 
-    const editProfile = target.closest('[data-action="edit-profile"]');
-    if (editProfile) { setProfileEditing(true); return; }
-
-    const saveProfile = target.closest('[data-action="save-profile"]');
-    if (saveProfile) { saveProfileFromInputs(); return; }
-
-    const cancelProfile = target.closest('[data-action="cancel-profile"]');
-    if (cancelProfile) { setProfileEditing(false); toast('Cambios descartados'); return; }
-
-    const focusDisplayName = target.closest('[data-action="focus-display-name"]');
-    if (focusDisplayName) {
-      const node = $('#profileDisplayName');
-      if (node) { node.focus(); node.select(); }
+    const inlineField = target.closest('[data-inline-field]');
+    if (inlineField && !target.closest('.inline-edit-wrap')) {
+      beginInlineEdit(inlineField);
       return;
     }
 
@@ -3042,16 +3056,6 @@
       }
     });
 
-    document.addEventListener('focusout', async (event) => {
-      if (event.target.id !== 'profileUsername') return;
-      const username = sanitizeUsername(event.target.value);
-      if (!validUsername(username)) {
-        setProfileUsernameStatus('3–20 caracteres: letras, números, punto o guion bajo.', false);
-        return;
-      }
-      const available = await isUsernameAvailable(username);
-      setProfileUsernameStatus(available ? 'Usuario disponible.' : 'Ese usuario ya está en uso.', available);
-    });
     $('#saveNotifBtn').addEventListener('click', () => {
       const time = $('#reminderTime').value;
       if (!/^\d{2}:\d{2}$/.test(time)) { toast('Selecciona una hora válida'); return; }
