@@ -242,7 +242,10 @@
     }
     .inline-editable.inline-select:hover .inline-select-chevron,
     .inline-editable.inline-select:focus-visible .inline-select-chevron { opacity: 1; }
-    .inline-username { font-size: 13px; font-weight: 500; color: #a1a1aa; opacity: .85; transform: translateY(3px); }
+    .inline-editable.inline-username {
+      padding: 4px 5px 0 1px; font-size: 13px; font-weight: 500; line-height: 17px;
+      color: #a1a1aa; opacity: .85; transform: translateY(.8px);
+    }
     .inline-edit-wrap {
       position: absolute; inset: -1.5px; display: inline-flex; align-items: stretch; white-space: nowrap;
     }
@@ -704,6 +707,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="./supabase.js?v=32"></script>
-  <script src="./app.js?v=43"></script>
+  <script src="./app.js?v=44"></script>
 </body>
 </html>
