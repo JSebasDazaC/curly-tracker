@@ -10,10 +10,12 @@ PWA monocromática para el control capilar masculino: perfil de rizo, inventario
 - **Autenticación**: Google, Microsoft (Azure) y Facebook OAuth; acceso sin contraseña con **un solo campo de correo** que envía un código de 6 dígitos; sesión local sin cuenta. Todo con Supabase (`@supabase/supabase-js` vía CDN). El código se introduce en la propia app, sin depender de que el correo abra la PWA. El registro pide los datos de perfil después de verificarlo. Si falla o caduca, se muestra una pantalla limpia en español para solicitar otro.
 - **Perfil social**: nombre, apellido, **usuario único**, nombre a mostrar independiente (acepta texto decorativo, tipografías, emojis y símbolos pegados desde otras páginas), biografía, foto de perfil y banner. El usuario se valida en tiempo real y se protege con un índice único en minúsculas.
 - **Sincronización**: `user_profile`, `products`, `tools` y `schedule_logs` con RLS por `auth.uid()`. Los cambios hechos en cualquier dispositivo se suben y se reciben en los demás mediante **Supabase Realtime**; al volver del segundo plano también se refresca automáticamente. Las imágenes se guardan en el bucket público `avatars` de Supabase Storage. Si las tablas aún no existen o no hay sesión, la app sigue funcionando en **modo local** (localStorage).
-- **Módulos**:
-  1. Perfil social y capilar (identidad personalizable + patrón 2C–4A, porosidad, grosor y objetivo).
-  2. Inventario de 6 categorías de productos con estados, etiquetas de componentes e indicador de compatibilidad; 9 herramientas esenciales precargadas más herramientas personalizadas.
-  3. Horario semanal calculado a partir del perfil y del inventario disponible, con sugerencias discretas de productos faltantes, registro diario y puntuación de definición/frizz (1–5).
+- **Vistas, cada dato en una sola casa**:
+  1. **Hoy**: plan del día, racha, sugerencias, resultado y registro del día.
+  2. **Rutina**: los otros seis días; el día de hoy solo es un acceso a Hoy, sin repetir pasos ni registro.
+  3. **Inventario**: 6 categorías de productos, estados, filtro *Lista de compra*, etiquetas de componentes, compatibilidad y herramientas.
+  4. **Mi perfil**: identidad social, perfil capilar y cuenta/sesión.
+  5. **Ajustes**: recordatorio diario y datos (exportar/borrar).
 
 ## Puesta en marcha (Live Server)
 
@@ -79,9 +81,10 @@ curly-tracker/
 
 ## Uso rápido
 
-- En **Mi perfil** personaliza usuario, nombre a mostrar, tipografía, biografía, foto y banner; el cambio se sincroniza solo.
+- En **Mi perfil** personaliza usuario, nombre a mostrar (con el texto decorativo que quieras pegar), biografía, foto y banner; el cambio se sincroniza solo.
 - Toca el estado de un producto para ciclar entre *En uso → Por acabarse → No lo tengo*.
 - Marca herramientas para que pasen a formar parte de los pasos de la rutina.
 - El horario nunca incluye productos que no tienes; cuando falta algo relevante aparece una sugerencia discreta.
-- En **Hoy** puedes registrar el día directamente; en **Rutina** puedes registrar cualquier día de la semana.
-- En **Ajustes** puedes exportar un JSON, borrar datos locales o forzar la sincronización.
+- En **Hoy** registras el día; en **Rutina**, el acceso de hoy te lleva allí y los otros seis días tienen su propio registro.
+- En **Mi perfil → Cuenta** ves el estado de la sincronización, cierras sesión o vuelves al acceso con código.
+- En **Ajustes** puedes exportar un JSON o borrar tus datos (también la copia de la cuenta si has iniciado sesión).

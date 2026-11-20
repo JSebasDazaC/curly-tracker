@@ -33,6 +33,11 @@
     'No lo tengo / Lista de compra'
   ];
 
+  const STATUS_FILTERS = [
+    { value: 'all', label: 'Todos' },
+    { value: STATUSES[2], label: 'Lista de compra' }
+  ];
+
   const PRESET_TOOLS = [
     'Cepillo definidor de 9 hileras tipo Denman',
     'Cepillo flexible desenredante',
@@ -71,14 +76,13 @@
   };
   const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   const VIEW_LABELS = {
-    hoy: 'Hoy', perfil: 'Mi perfil capilar', inventario: 'Inventario',
-    rutina: 'Rutina semanal', ajustes: 'Ajustes'
+    hoy: 'Hoy', perfil: 'Mi perfil', inventario: 'Inventario',
+    rutina: 'Rutina', ajustes: 'Ajustes'
   };
 
   /* ---------------- Iconos ---------------- */
   const ICONS = {
     hoy: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/>',
-    perfil: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
     inventario: '<path d="M3 7h18v13H3z"/><path d="m4.5 7 1.5-4h12l1.5 4"/><path d="M9 11h6"/>',
     rutina: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="m9 15 2 2 4-4"/>',
     ajustes: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21h-4v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-2.8-2.8.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3v-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1L7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V3h4v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 2.8 2.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1v4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
@@ -91,15 +95,12 @@
     drop: '<path d="M12 3s6 6.4 6 10a6 6 0 0 1-12 0c0-3.6 6-10 6-10Z"/>',
     spark: '<path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z"/><path d="m19 16 .7 1.8L21.5 18.5l-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7Z"/>',
     alert: '<path d="M12 3 2 20h20Z"/><path d="M12 9v5M12 17h.01"/>',
-    cloud: '<path d="M7 18h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 11a3.5 3.5 0 0 0 1 7Z"/>',
     close: '<path d="M18 6 6 18M6 6l12 12"/>',
     arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     chevron: '<path d="m6 9 6 6 6-6"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
     calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>',
-    star: '<path d="m12 3 2.9 5.9 6.5 1-4.7 4.6 1.1 6.5L12 18l-5.8 3 1.1-6.5L2.6 9.9l6.5-1Z"/>',
-    lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
-    download: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 19h16"/>'
+    star: '<path d="m12 3 2.9 5.9 6.5 1-4.7 4.6 1.1 6.5L12 18l-5.8 3 1.1-6.5L2.6 9.9l6.5-1Z"/>'
   };
 
   function icon(name, cls = 'h-5 w-5') {
@@ -191,7 +192,7 @@
       menu.className = 'select-menu hidden';
       menu.setAttribute('role', 'listbox');
       menu.innerHTML = Array.from(select.options).map((option, index) => `
-        <button type="button" class="select-option" role="option" data-index="${index}" data-value="${esc(option.value)}" aria-selected="${option.value === select.value}">
+        <button type="button" class="select-option" role="option" data-value="${esc(option.value)}" aria-selected="${option.value === select.value}">
           <span class="truncate">${esc(option.textContent)}</span>
           <span class="select-check">${icon('check', 'h-4 w-4')}</span>
         </button>`).join('');
@@ -505,7 +506,8 @@
   let state = loadState();
   let currentView = 'hoy';
   let currentCategory = CATEGORIES[0];
-  let expandedDay = dateKey();
+  let currentStatusFilter = 'all';
+  let expandedDay = '';
   let editingProductId = null;
   let modalIngredients = [];
   let authMode = 'login';
@@ -773,7 +775,7 @@
     $$('[data-view]').forEach((section) => {
       section.classList.toggle('hidden', section.dataset.view !== currentView);
     });
-    $('#appShell').classList.toggle('profile-open', currentView === 'perfil');
+    if (currentView !== 'perfil' && profileEditing) setProfileEditing(false);
     renderNav();
     renderCurrentView();
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -834,8 +836,6 @@
     const key = dateKey(today);
     const plan = planForDay(today);
     const log = state.logs[key] || {};
-    const available = availableProducts();
-    const toolCount = state.tools.filter((tool) => tool.owned).length;
     const streak = streakCount();
     const completed = Boolean(log.completed);
 
@@ -865,15 +865,6 @@
         </div>`
       : '';
 
-    const shopping = state.products.filter((product) => product.status === STATUSES[2]).slice(0, 3);
-    const shoppingHtml = shopping.length
-      ? `<div class="surface p-5">
-          <p class="label">Lista de compra</p>
-          <div class="space-y-2">${shopping.map((product) => `<div class="flex items-center justify-between gap-2 text-sm"><span class="truncate muted">${esc(product.name)}</span><span class="shrink-0 text-xs faint">${esc(shortCategory(product.category))}</span></div>`).join('')}</div>
-          <button class="btn-ghost mt-4 w-full" type="button" data-nav="inventario">Ver inventario</button>
-        </div>`
-      : '';
-
     $('#todayContent').innerHTML = `
       <div class="surface overflow-hidden">
         <div class="relative p-6 sm:p-7">
@@ -886,10 +877,8 @@
             </div>
             <span class="chip ${completed ? 'chip-ok' : 'chip-warn'}">${completed ? icon('check', 'h-3.5 w-3.5') : icon('calendar', 'h-3.5 w-3.5')}${completed ? 'Completado' : 'Pendiente'}</span>
           </div>
-          <div class="relative mt-6 grid grid-cols-3 gap-3">
+          <div class="relative mt-6 grid grid-cols-1 gap-3">
             <div class="surface-flat p-3"><p class="text-xl font-semibold">${streak}</p><p class="text-[11px] faint">días de racha</p></div>
-            <div class="surface-flat p-3"><p class="text-xl font-semibold">${available.length}</p><p class="text-[11px] faint">productos listos</p></div>
-            <div class="surface-flat p-3"><p class="text-xl font-semibold">${toolCount}</p><p class="text-[11px] faint">herramientas</p></div>
           </div>
         </div>
         <div class="hairline"></div>
@@ -909,20 +898,7 @@
           ${log.notes ? `<div class="w-full text-xs faint">“${esc(log.notes)}”</div>` : ''}
         </div>
       </div>` : ''}
-      <div class="grid gap-5 sm:grid-cols-2">
-        <div class="surface p-5">
-          <p class="label">Lectura rápida</p>
-          <div class="space-y-3 text-sm">
-            <div class="flex items-center justify-between gap-3"><span class="muted">Patrón</span><span>${esc(state.profile.curl_pattern)} · ${esc(PATTERN_LABELS[state.profile.curl_pattern] || '')}</span></div>
-            <div class="hairline"></div>
-            <div class="flex items-center justify-between gap-3"><span class="muted">Porosidad</span><span>${esc(state.profile.porosity)}</span></div>
-            <div class="hairline"></div>
-            <div class="flex items-center justify-between gap-3"><span class="muted">Objetivo</span><span>${esc(GOAL_LABELS[state.profile.goal] || state.profile.goal)}</span></div>
-          </div>
-          <button class="btn-ghost mt-5 w-full" type="button" data-nav="perfil">Ajustar perfil</button>
-        </div>
-        ${shoppingHtml || `<div class="surface p-5"><p class="label">Todo cubierto</p><p class="text-sm muted">No tienes productos pendientes en la lista de compra. Tu inventario está al día.</p></div>`}
-      </div>`;
+`;
   }
 
   /* ---------------- Render: Perfil ---------------- */
@@ -949,11 +925,9 @@
     const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
     const shownName = displayName();
     const showFullName = Boolean(fullName) && fullName !== shownName;
-    const email = syncState.session && syncState.session.user ? syncState.session.user.email : '';
-    const chips = [
-      p.username && shownName !== '@' + p.username ? `<span class="chip">@${esc(p.username)}</span>` : '',
-      email ? `<span class="chip">${esc(email)}</span>` : ''
-    ].filter(Boolean).join('');
+    const chips = p.username && shownName !== '@' + p.username
+      ? `<span class="chip">@${esc(p.username)}</span>`
+      : '';
     const profileFields = [p.first_name, p.last_name, p.username, p.display_name, p.bio, p.avatar_url, p.banner_url, p.curl_pattern, p.porosity, p.thickness, p.goal];
     const completePercent = Math.round(profileFields.filter(Boolean).length / profileFields.length * 100);
     const progressHtml = `
@@ -1054,6 +1028,8 @@
     if (!profileEditing) fillProfileInputs();
     renderProfileReadonly();
     renderProfileHero();
+    renderAccount();
+    renderSyncStatus();
   }
 
   /* ---------------- Render: Inventario ---------------- */
@@ -1063,7 +1039,11 @@
       return `<button class="shrink-0 rounded-xl px-3.5 py-2 text-sm transition ${currentCategory === category ? 'bg-[#fafafa] font-semibold text-[#09090b]' : 'text-[#a1a1aa] hover:text-white'}" type="button" data-category="${esc(category)}">${esc(shortCategory(category))}<span class="ml-1.5 text-xs opacity-60">${count}</span></button>`;
     }).join('');
 
-    const list = state.products.filter((product) => product.category === currentCategory);
+    $('#statusTabs').innerHTML = STATUS_FILTERS.map((filter) => `
+      <button class="shrink-0 rounded-xl px-3.5 py-2 text-sm transition ${currentStatusFilter === filter.value ? 'bg-[#fafafa] font-semibold text-[#09090b]' : 'text-[#a1a1aa] hover:text-white'}" type="button" data-status-filter="${esc(filter.value)}">${esc(filter.label)}</button>`).join('');
+
+    const list = state.products.filter((product) => product.category === currentCategory
+      && (currentStatusFilter === 'all' || product.status === currentStatusFilter));
     $('#productList').innerHTML = list.length
       ? list.map((product) => {
           const compatibility = evaluateProduct(product, state.profile);
@@ -1081,7 +1061,7 @@
             </div>
             <div class="mt-3 flex flex-wrap gap-2">
               <button class="chip ${statusClass}" type="button" data-cycle-status="${esc(product.id)}" title="Toca para cambiar el estado">${esc(product.status)}</button>
-              <span class="chip ${compatibility.ok ? 'chip-ok' : 'chip-warn'}" title="${esc(compatibility.notes.join(' · '))}">${icon(compatibility.ok ? 'check' : 'alert', 'h-3.5 w-3.5')}${compatibility.ok ? 'Apto para tus rizos' : 'Precaución / Reseca'}</span>
+              <span class="chip ${compatibility.ok ? 'chip-ok' : 'chip-warn'}">${icon(compatibility.ok ? 'check' : 'alert', 'h-3.5 w-3.5')}${compatibility.ok ? 'Apto para tus rizos' : 'Precaución / Reseca'}</span>
             </div>
             ${product.ingredients.length ? `<div class="mt-3 flex flex-wrap gap-1.5">${product.ingredients.map((item) => `<span class="chip">${esc(item)}</span>`).join('')}</div>` : ''}
             ${product.notes ? `<p class="mt-3 text-xs faint">${esc(product.notes)}</p>` : ''}
@@ -1090,7 +1070,7 @@
         }).join('')
       : `<div class="px-5 py-12 text-center">
           <div class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl border border-[#27272a] text-[#a1a1aa]">${icon('drop', 'h-5 w-5')}</div>
-          <p class="mt-3 text-sm font-medium">Sin productos en ${esc(shortCategory(currentCategory))}</p>
+          <p class="mt-3 text-sm font-medium">${currentStatusFilter === 'all' ? `Sin productos en ${esc(shortCategory(currentCategory))}` : 'Sin productos con este filtro'}</p>
           <p class="mt-1 text-xs muted">Añade el primero para que entre en tu horario.</p>
           <button class="btn-ghost mt-4" type="button" data-add-product="${esc(currentCategory)}">${icon('plus', 'h-4 w-4')}Añadir producto</button>
         </div>`;
@@ -1124,7 +1104,9 @@
       <button class="min-w-[92px] flex-1 rounded-xl border p-3 text-left transition ${day.isToday ? 'border-[#fafafa] bg-[#18181b]' : 'border-[#27272a] bg-[#121214] hover:border-[#3f3f46]'}" type="button" data-jump-day="${day.key}">
         <span class="block text-[10px] uppercase tracking-wider ${day.isToday ? 'text-[#fafafa]' : 'faint'}">${esc(DAY_NAMES[day.plan.day].slice(0, 3))}</span>
         <span class="mt-1 block text-lg font-semibold">${day.date.getDate()}</span>
-        <span class="mt-1 flex items-center gap-1 text-[10px] ${day.log.completed ? 'text-[#fafafa]' : 'faint'}">${icon(day.log.completed ? 'check' : 'calendar', 'h-3 w-3')}${day.log.completed ? 'Hecho' : `${day.plan.steps.length} pasos`}</span>
+        ${day.isToday
+          ? `<span class="mt-1 flex items-center gap-1 text-[10px] text-[#fafafa]">${icon('arrow', 'h-3 w-3')}Ver en Hoy</span>`
+          : `<span class="mt-1 flex items-center gap-1 text-[10px] ${day.log.completed ? 'text-[#fafafa]' : 'faint'}">${icon(day.log.completed ? 'check' : 'calendar', 'h-3 w-3')}${day.log.completed ? 'Hecho' : `${day.plan.steps.length} pasos`}</span>`}
       </button>`).join('');
 
     $('#routineList').innerHTML = days.map((day) => {
@@ -1143,10 +1125,21 @@
         </li>`;
       }).join('');
 
-      return `<article id="day-${day.key}" class="surface overflow-hidden ${day.isToday ? 'border-[#52525b]' : ''}">
+      if (day.isToday) return `<article id="day-${day.key}" class="surface overflow-hidden border-[#fafafa]">
+        <button class="flex w-full items-center justify-between gap-3 p-5 text-left" type="button" data-nav="hoy">
+          <div class="min-w-0">
+            <p class="text-[11px] uppercase tracking-[.14em] text-[#fafafa]">Hoy · ${esc(formatDay(day.date))}</p>
+            <h3 class="mt-1.5 text-lg font-semibold">${esc(day.plan.title)}</h3>
+            <p class="mt-1 text-xs muted">Tu plan y tu registro están en Hoy.</p>
+          </div>
+          <span class="chip">${icon('arrow', 'h-3.5 w-3.5')}Ver en Hoy</span>
+        </button>
+      </article>`;
+
+      return `<article id="day-${day.key}" class="surface overflow-hidden">
         <button class="flex w-full items-center justify-between gap-3 p-5 text-left" type="button" data-toggle-day="${day.key}">
           <div class="min-w-0">
-            <p class="text-[11px] uppercase tracking-[.14em] ${day.isToday ? 'text-[#fafafa]' : 'faint'}">${esc(DAY_NAMES[day.plan.day])}${day.isToday ? ' · Hoy' : ''} · ${esc(formatDay(day.date))}</p>
+            <p class="text-[11px] uppercase tracking-[.14em] faint">${esc(DAY_NAMES[day.plan.day])} · ${esc(formatDay(day.date))}</p>
             <h3 class="mt-1.5 text-lg font-semibold">${esc(day.plan.title)}</h3>
             <p class="mt-1 text-xs muted">${day.plan.steps.length} pasos · ${day.plan.suggestions.length ? `${day.plan.suggestions.length} sugerencia${day.plan.suggestions.length > 1 ? 's' : ''}` : 'inventario completo'}</p>
           </div>
@@ -1164,14 +1157,12 @@
       </article>`;
     }).join('');
 
-    $('#routineNote').innerHTML = `${icon('spark', 'mr-1 inline h-3.5 w-3.5')}El horario se recalcula al cambiar tu perfil o al marcar productos y herramientas como disponibles. Las sugerencias solo proponen lo que falta; nunca se incluye en los pasos. Análisis de compatibilidad orientativo, no sustituye el criterio de un profesional.`;
+    $('#routineNote').innerHTML = `${icon('spark', 'mr-1 inline h-3.5 w-3.5')}El horario se recalcula al cambiar tu perfil o al marcar productos y herramientas como disponibles. Las sugerencias solo proponen lo que falta; nunca se incluyen en los pasos.`;
   }
 
   /* ---------------- Render: Ajustes ---------------- */
   function renderSettings() {
     renderReminderSettings();
-    renderSyncStatus();
-    renderAccount();
   }
 
   function renderReminderSettings() {
@@ -1195,21 +1186,29 @@
   function renderSyncStatus() {
     const online = Boolean(syncState.ready);
     const label = online ? 'Sincronizado' : 'Modo local';
-    ['sideSyncDot', 'topSyncDot'].forEach((id) => { const node = $('#' + id); if (node) node.dataset.online = String(online); });
-    const side = $('#sideSyncLabel');
-    if (side) side.textContent = label;
     const cloud = $('#cloudStatus');
-    if (cloud) cloud.innerHTML = `<span class="badge-dot" data-online="${online}"></span><span>${label}</span>`;
+    if (!cloud) return;
+    cloud.className = `chip ${online ? 'chip-ok' : 'chip-warn'}`;
+    cloud.innerHTML = `<span class="badge-dot" data-online="${online}"></span>${label}`;
   }
 
   function renderAccount() {
     const user = syncState.session && syncState.session.user ? syncState.session.user : null;
-    const email = user && user.email ? user.email : 'Invitado';
-    const label = state.profile.username ? `@${state.profile.username}` : displayName();
-    ['sideEmail', 'accountEmail'].forEach((id) => {
-      const node = $('#' + id);
-      if (node) node.textContent = label === 'Invitado' ? email : label;
-    });
+    const signedIn = Boolean(user);
+    const emailNode = $('#accountEmail');
+    if (emailNode) emailNode.textContent = user && user.email ? user.email : 'Invitado';
+
+    const signOut = $('#signOutBtn');
+    if (signOut) signOut.classList.toggle('hidden', !signedIn);
+    const login = $('#localLoginBtn');
+    if (login) login.classList.toggle('hidden', signedIn);
+    const sync = $('#forceSyncBtn');
+    if (sync) sync.classList.toggle('hidden', !signedIn);
+    const hint = $('#accountHint');
+    if (hint) hint.textContent = signedIn
+      ? 'Tus cambios se sincronizan con tu cuenta.'
+      : 'Estás en modo local. Inicia sesión para sincronizar entre dispositivos.';
+
     const initial = avatarInitial();
     const avatarUrl = state.profile.avatar_url;
     ['sideAvatar', 'topAvatar'].forEach((id) => {
@@ -1225,7 +1224,6 @@
         node.textContent = initial;
       }
     });
-    renderProfileHero();
   }
 
   /* ---------------- Modales ---------------- */
@@ -1378,7 +1376,7 @@
   function ratingRow(label, group) {
     return `<div>
       <p class="label">${label}</p>
-      <div class="seg" data-rate-group="${group}">
+      <div class="seg">
         ${[1, 2, 3, 4, 5].map((value) => `<button class="seg-btn" type="button" data-rate="${group}" data-value="${value}">${value}</button>`).join('')}
       </div>
     </div>`;
@@ -1401,7 +1399,7 @@
       <form id="logForm" class="space-y-5">
         <div>
           <label class="label" for="logDate">Fecha</label>
-          <input class="field" id="logDate" type="date" value="${esc(key)}" max="${dateKey()}" />
+          <input class="field" id="logDate" type="date" value="${esc(key)}" readonly />
         </div>
         <label class="flex items-center gap-3 surface-flat p-3.5 text-sm">
           <input id="logCompleted" type="checkbox" class="h-4 w-4" style="accent-color:#fafafa" ${log.completed ? 'checked' : ''} />
@@ -1749,7 +1747,7 @@
     const raw = String($('#authIdentifier').value || '').trim();
 
     if (!raw) {
-      node.textContent = 'Te enviaremos un enlace.';
+      node.textContent = 'Te enviaremos un código de 6 dígitos.';
       node.className = 'mt-1.5 text-xs faint';
     } else if (!validEmail(raw)) {
       node.textContent = raw.includes('@') ? 'Falta el dominio.' : 'Añade @ y el dominio.';
@@ -1792,7 +1790,7 @@
 
     showAuthPanel('main');
     $('#authTitle').textContent = signup ? 'Crear cuenta' : 'Bienvenido de nuevo';
-    $('#authSubtitle').textContent = 'Elige cómo continuar.';
+    $('#authSubtitle').textContent = 'Elige cómo acceder.';
     $('#authToggle').textContent = signup ? '¿Ya tienes cuenta? Entrar' : '¿No tienes cuenta? Crear cuenta';
     $('#authSubmit').textContent = signup ? 'Crear cuenta' : 'Entrar';
 
@@ -1969,9 +1967,9 @@
   function authErrorText(code) {
     const value = String(code || '').toLowerCase();
     if (value.includes('expired') || value.includes('caduc')) {
-      return 'El enlace ha caducado. Solicita otro.';
+      return 'El código ha caducado. Solicita otro.';
     }
-    return 'No pudimos verificar el enlace. Solicita otro.';
+    return 'No pudimos verificar el código. Solicita otro.';
   }
 
   function showAuthCallbackPanel(title, message, isError) {
@@ -1998,7 +1996,7 @@
     if (!errorCode && !tokenHash && !accessToken && !code) return false;
 
     const returnTab = takeReturnTab();
-    showAuthCallbackPanel('Verificando el enlace…', 'Activando tu cuenta.', false);
+    showAuthCallbackPanel('Verificando el código…', 'Activando tu cuenta.', false);
     let failureCode = errorCode;
     try {
       if (errorCode) throw new Error(authErrorText(errorCode));
@@ -2030,7 +2028,7 @@
       failureCode = failureCode || (error && (error.code || error.message));
       authCallbackError = true;
       showLogin();
-      showAuthCallbackPanel('No pudimos verificar el enlace', authErrorText(failureCode), true);
+      showAuthCallbackPanel('No pudimos verificar el código', authErrorText(failureCode), true);
     }
     return true;
   }
@@ -2242,7 +2240,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=20');
+        await navigator.serviceWorker.register('./sw.js?v=21');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
@@ -2428,6 +2426,9 @@
     const category = target.closest('[data-category]');
     if (category) { currentCategory = category.dataset.category; renderInventory(); return; }
 
+    const statusFilter = target.closest('[data-status-filter]');
+    if (statusFilter) { currentStatusFilter = statusFilter.dataset.statusFilter; renderInventory(); return; }
+
     const toggleTool = target.closest('[data-toggle-tool]');
     if (toggleTool) {
       state.tools = state.tools.map((tool) => tool.id === toggleTool.dataset.toggleTool ? Object.assign({}, tool, { owned: !tool.owned }) : tool);
@@ -2457,6 +2458,7 @@
 
     const jumpDay = target.closest('[data-jump-day]');
     if (jumpDay) {
+      if (jumpDay.dataset.jumpDay === dateKey()) { setView('hoy'); return; }
       expandedDay = jumpDay.dataset.jumpDay;
       renderRoutine();
       const node = $('#day-' + expandedDay);
@@ -2523,7 +2525,6 @@
 
     $('#addProductBtn').addEventListener('click', () => openProductModal(null, currentCategory));
     $('#addToolBtn').addEventListener('click', openToolModal);
-    $('#openLogBtn').addEventListener('click', () => openLogModal(dateKey()));
 
     $('#saveProfileBtn').addEventListener('click', saveProfileFromInputs);
     $('#cancelProfileBtn').addEventListener('click', () => setProfileEditing(false));
@@ -2549,6 +2550,7 @@
       const time = $('#reminderTime').value;
       if (!/^\d{2}:\d{2}$/.test(time)) { toast('Selecciona una hora válida'); return; }
       state.settings.reminderTime = time;
+      state.settings.reminderEnabled = $('#reminderToggle [data-value="on"]').dataset.active === 'true';
       persist();
       renderReminderSettings();
       Notifications.postSchedule();
@@ -2558,10 +2560,7 @@
     $('#reminderToggle').addEventListener('click', (event) => {
       const button = event.target.closest('[data-value]');
       if (!button) return;
-      state.settings.reminderEnabled = button.dataset.value === 'on';
-      persist();
-      renderReminderSettings();
-      Notifications.postSchedule();
+      $$('#reminderToggle .seg-btn').forEach((item) => { item.dataset.active = String(item === button); });
     });
 
     $('#askPermissionBtn').addEventListener('click', () => Notifications.requestPermission());
@@ -2587,7 +2586,7 @@
       setSyncState(false, null);
       toast('Sesión cerrada');
     });
-    $('#sideSignOut').addEventListener('click', () => $('#signOutBtn').click());
+    $('#localLoginBtn').addEventListener('click', () => showLogin());
 
     $('#exportBtn').addEventListener('click', () => {
       const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -2600,13 +2599,34 @@
       toast('Copia JSON exportada');
     });
 
-    $('#resetLocalBtn').addEventListener('click', () => {
-      if (!confirm('¿Borrar los datos de este dispositivo? No se puede deshacer.')) return;
+    $('#resetLocalBtn').addEventListener('click', async () => {
+      const user = syncState.session && syncState.session.user ? syncState.session.user : null;
+      const message = user
+        ? '¿Borrar tus datos de este dispositivo y de tu cuenta? No se puede deshacer.'
+        : '¿Borrar los datos de este dispositivo? No se puede deshacer.';
+      if (!confirm(message)) return;
+      if (user && sb) {
+        const tables = ['user_profile', 'products', 'tools', 'schedule_logs'];
+        for (const table of tables) {
+          const result = await sb.from(table).delete().eq('user_id', user.id);
+          if (result.error) { toast('No se pudieron borrar los datos de la nube'); return; }
+        }
+        unsubscribeRealtime();
+      }
       localStorage.removeItem(LS_KEY);
       state = defaultState();
       currentCategory = CATEGORIES[0];
-      persist(); renderAll();
-      toast('Datos locales borrados');
+      currentStatusFilter = 'all';
+      expandedDay = '';
+      persist();
+      renderAll();
+      if (user) {
+        syncState.ready = false;
+        lastEnteredUser = null;
+        showLogin();
+        setSyncState(false, null);
+      }
+      toast('Datos borrados');
     });
 
     document.addEventListener('click', (event) => {

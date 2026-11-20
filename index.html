@@ -59,7 +59,6 @@
     .profile-feature { padding: 14px; border-radius: 14px; border: 1px solid #27272a; background: #09090b; }
     .profile-feature-value { margin-top: 8px; font-size: 1.25rem; font-weight: 600; line-height: 1.2; letter-spacing: -.02em; }
     .profile-progress { height: 6px; border-radius: 999px; background: #27272a; overflow: hidden; }
-    #appShell.profile-open .side-account-label { display: none; }
     .profile-progress > span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #71717a, #fafafa); transition: width .3s ease; }
     .field {
       width: 100%; background: #09090b; border: 1px solid #27272a; border-radius: 12px;
@@ -210,12 +209,6 @@
     @media (min-width: 1024px) { .safe-bottom { padding-bottom: 48px; } }
 
     /* Autenticación social */
-    .auth-tab {
-      flex: 1; border-radius: 9px; padding: 9px 10px; font-size: 13px;
-      color: #a1a1aa; transition: color .15s ease, background .15s ease;
-    }
-    .auth-tab:hover { color: #fafafa; }
-    .auth-tab[data-active="true"] { background: #fafafa; color: #09090b; font-weight: 600; }
     .oauth-list { display: grid; gap: 10px; margin-top: 28px; }
 
     /* Perfil social */
@@ -248,7 +241,7 @@
       <div class="surface p-6 sm:p-8">
         <div id="authMainPanel">
         <h2 id="authTitle" class="text-xl font-semibold">Bienvenido de nuevo</h2>
-        <p id="authSubtitle" class="mt-1.5 text-sm muted">Elige cómo continuar.</p>
+        <p id="authSubtitle" class="mt-1.5 text-sm muted">Elige cómo acceder.</p>
 
         <div class="oauth-list">
           <button id="googleBtn" class="btn-ghost w-full" type="button">
@@ -285,7 +278,7 @@
           <div id="identifierFields">
             <label class="label" for="authIdentifier">Correo</label>
             <input class="field" id="authIdentifier" type="email" autocomplete="email" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="nombre@dominio.com" />
-            <p id="authIdentifierHint" class="mt-1.5 text-xs faint">Te enviaremos un enlace.</p>
+            <p id="authIdentifierHint" class="mt-1.5 text-xs faint">Te enviaremos un código de 6 dígitos.</p>
           </div>
 
           <button id="authSubmit" class="btn-primary mt-6 w-full" type="submit">Entrar</button>
@@ -328,7 +321,7 @@
 
         <div id="authCallbackPanel" hidden>
           <div class="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#27272a] bg-[#121214]" id="callbackMark"></div>
-          <h2 id="authCallbackTitle" class="text-xl font-semibold">Verificando el enlace…</h2>
+          <h2 id="authCallbackTitle" class="text-xl font-semibold">Verificando el código…</h2>
           <p id="authCallbackMessage" class="mt-1.5 text-sm muted">Activando tu cuenta.</p>
           <div id="authCallbackActions" class="mt-6 hidden">
             <button id="authCallbackBackBtn" class="btn-primary w-full" type="button">Volver a iniciar sesión</button>
@@ -347,7 +340,7 @@
         <div id="sideMark" class="flex h-10 w-10 items-center justify-center rounded-xl border border-[#27272a] bg-[#121214]"></div>
         <div>
           <p class="text-base font-semibold leading-tight">Curly Tracker</p>
-          <p class="text-xs faint">Male hair care</p>
+          <p class="text-xs faint">Cuidado capilar</p>
         </div>
       </div>
 
@@ -355,27 +348,12 @@
       <nav class="mt-2 space-y-1" aria-label="Navegación principal">
         <button class="side-btn" type="button" data-nav="hoy"><span data-nav-icon="hoy"></span>Hoy</button>
         <button class="side-btn" type="button" data-nav="inventario"><span data-nav-icon="inventario"></span>Inventario</button>
-        <button class="side-btn" type="button" data-nav="rutina"><span data-nav-icon="rutina"></span>Rutina semanal</button>
+        <button class="side-btn" type="button" data-nav="rutina"><span data-nav-icon="rutina"></span>Rutina</button>
         <button class="side-btn" type="button" data-nav="ajustes"><span data-nav-icon="ajustes"></span>Ajustes</button>
       </nav>
 
-      <div class="mt-auto">
-        <div class="surface p-4">
-          <div class="flex items-center justify-between">
-            <span class="text-xs faint">Sincronización</span>
-            <span class="badge-dot" id="sideSyncDot"></span>
-          </div>
-          <p id="sideSyncLabel" class="mt-2 text-sm">Modo local</p>
-          <p class="mt-1 text-xs faint">Tus cambios se guardan al instante.</p>
-        </div>
-        <div class="mt-4 flex items-center gap-3 px-2">
-          <button id="sideAvatar" class="top-avatar flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#27272a] bg-[#121214] text-sm font-semibold" type="button" data-nav="perfil" aria-label="Abrir mi perfil" title="Mi perfil">C</button>
-          <div class="min-w-0 flex-1 side-account-label">
-            <p id="sideEmail" class="truncate text-xs muted">Invitado</p>
-            <p class="text-[11px] faint">Sesión activa</p>
-          </div>
-          <button id="sideSignOut" class="text-xs faint hover:text-white" type="button">Salir</button>
-        </div>
+      <div class="mt-auto px-2">
+        <button id="sideAvatar" class="top-avatar flex h-10 w-10 items-center justify-center rounded-full border border-[#27272a] bg-[#121214] text-sm font-semibold" type="button" data-nav="perfil" aria-label="Abrir mi perfil" title="Mi perfil">C</button>
       </div>
     </aside>
 
@@ -390,22 +368,16 @@
               <p id="topSubtitle" class="text-[11px] faint">Hoy</p>
             </div>
           </div>
-          <div class="flex items-center gap-3">
-            <span class="badge-dot" id="topSyncDot" title="Estado de sincronización"></span>
-            <button id="topAvatar" class="top-avatar flex h-8 w-8 items-center justify-center rounded-full border border-[#27272a] bg-[#121214] text-xs font-semibold" type="button" data-nav="perfil" aria-label="Abrir mi perfil" title="Mi perfil">C</button>
-          </div>
+          <button id="topAvatar" class="top-avatar flex h-8 w-8 items-center justify-center rounded-full border border-[#27272a] bg-[#121214] text-xs font-semibold" type="button" data-nav="perfil" aria-label="Abrir mi perfil" title="Mi perfil">C</button>
         </div>
       </header>
 
       <main class="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 safe-bottom sm:px-6 lg:px-10 lg:pt-10">
         <!-- HOY -->
         <section id="view-hoy" data-view="hoy" class="animate-in">
-          <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p id="todayDate" class="text-xs uppercase tracking-[.16em] faint"></p>
-              <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Hoy</h1>
-            </div>
-            <button id="openLogBtn" class="btn-primary" type="button">Registrar mi día</button>
+          <div class="mb-6">
+            <p id="todayDate" class="text-xs uppercase tracking-[.16em] faint"></p>
+            <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Hoy</h1>
           </div>
           <div id="todayContent" class="space-y-5"></div>
         </section>
@@ -413,12 +385,34 @@
         <!-- PERFIL -->
         <section id="view-perfil" data-view="perfil" class="hidden animate-in">
           <div class="mb-6">
-            <p class="text-xs uppercase tracking-[.16em] faint">Módulo 01</p>
+            <p class="text-xs uppercase tracking-[.16em] faint">Tu identidad</p>
             <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Mi perfil</h1>
             <p class="mt-2 max-w-2xl text-sm muted">Tu identidad y tus bases capilares. El horario se recalcula automáticamente con estos datos.</p>
           </div>
 
           <div id="socialProfileCard" class="surface mb-5 overflow-hidden"></div>
+
+          <div class="surface mb-5 p-5 sm:p-6">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="label">Cuenta</p>
+                <p class="text-sm muted">Tu sesión y la sincronización de tus datos.</p>
+              </div>
+              <span id="cloudStatus" class="chip chip-warn">Modo local</span>
+            </div>
+            <div class="mt-5 flex flex-wrap items-center justify-between gap-4">
+              <div class="min-w-0">
+                <p class="faint text-[11px] uppercase tracking-wider">Correo electrónico</p>
+                <p id="accountEmail" class="mt-0.5 truncate text-sm font-medium">Invitado</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button id="forceSyncBtn" class="btn-ghost btn-mini" type="button">Sincronizar ahora</button>
+                <button id="signOutBtn" class="btn-ghost btn-mini" type="button">Cerrar sesión</button>
+                <button id="localLoginBtn" class="btn-primary btn-mini hidden" type="button">Iniciar sesión</button>
+              </div>
+            </div>
+            <p id="accountHint" class="mt-3 text-xs faint"></p>
+          </div>
 
           <div class="grid gap-5">
             <div class="space-y-5">
@@ -535,7 +529,7 @@
               </div>
 
               <div class="flex flex-wrap items-center justify-between gap-4">
-                <p class="text-xs faint">Los cambios se guardan y sincronizan automáticamente.</p>
+                <p class="text-xs faint">Pulsa Guardar cambios para aplicarlos. Se sincronizan si has iniciado sesión.</p>
                 <div class="flex gap-2">
                   <button id="cancelProfileBtn" class="btn-ghost" type="button">Cancelar</button>
                   <button id="saveProfileBtn" class="btn-primary" type="button">Guardar cambios</button>
@@ -550,8 +544,8 @@
         <section id="view-inventario" data-view="inventario" class="hidden animate-in">
           <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p class="text-xs uppercase tracking-[.16em] faint">Módulo 02</p>
-              <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Inventario inteligente</h1>
+              <p class="text-xs uppercase tracking-[.16em] faint">Tus recursos</p>
+              <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Inventario</h1>
               <p class="mt-2 max-w-2xl text-sm muted">Solo marcas lo que tienes. El horario se adapta a tu botín real.</p>
             </div>
             <div class="flex flex-wrap gap-2">
@@ -562,6 +556,7 @@
 
           <div class="surface overflow-hidden">
             <div id="categoryTabs" class="scroll-x flex gap-1 overflow-x-auto border-b border-[#27272a] px-2 py-2"></div>
+            <div id="statusTabs" class="scroll-x flex gap-1 overflow-x-auto border-b border-[#27272a] px-2 py-2"></div>
             <div id="productList" class="divide-y divide-[#27272a]"></div>
           </div>
 
@@ -580,8 +575,8 @@
         <!-- RUTINA -->
         <section id="view-rutina" data-view="rutina" class="hidden animate-in">
           <div class="mb-6">
-            <p class="text-xs uppercase tracking-[.16em] faint">Módulo 03</p>
-            <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Horario inteligente</h1>
+            <p class="text-xs uppercase tracking-[.16em] faint">Tu semana</p>
+            <h1 class="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">Rutina</h1>
             <p class="mt-2 max-w-2xl text-sm muted">Una semana calculada con tu perfil y, únicamente, con lo que tienes.</p>
           </div>
           <div id="weekStrip" class="scroll-x mb-5 flex gap-2 overflow-x-auto pb-1"></div>
@@ -624,42 +619,18 @@
                 </div>
               </div>
               <div class="mt-5 flex flex-wrap gap-2">
-                <button id="saveNotifBtn" class="btn-primary" type="button">Guardar horario</button>
+                <button id="saveNotifBtn" class="btn-primary" type="button">Guardar recordatorio</button>
                 <button id="testNotifBtn" class="btn-ghost" type="button">Enviar prueba</button>
               </div>
             </div>
 
-            <div class="space-y-5">
-              <div class="surface p-5 sm:p-6">
-                <p class="text-base font-semibold">Cuenta</p>
-                <div class="mt-5 space-y-3 text-sm">
-                  <div class="flex items-center justify-between gap-3">
-                    <span class="muted">Estado</span>
-                    <span id="cloudStatus" class="flex items-center gap-2">Modo local</span>
-                  </div>
-                  <div class="hairline"></div>
-                  <div class="flex items-center justify-between gap-3">
-                    <span class="muted">Email</span>
-                    <span id="accountEmail" class="truncate">Invitado</span>
-                  </div>
-                  <div class="hairline"></div>
-                  <div class="flex items-center justify-between gap-3">
-                    <span class="muted">Dispositivo</span>
-                    <span id="deviceLabel">Web</span>
-                  </div>
-                </div>
-                <div class="mt-6 flex flex-wrap gap-2">
-                  <button id="forceSyncBtn" class="btn-ghost" type="button">Sincronizar ahora</button>
-                  <button id="signOutBtn" class="btn-ghost" type="button">Cerrar sesión</button>
-                </div>
+            <div class="surface p-5 sm:p-6">
+              <p class="text-base font-semibold">Datos</p>
+              <div class="mt-5 flex flex-wrap gap-2">
+                <button id="exportBtn" class="btn-ghost" type="button">Exportar JSON</button>
+                <button id="resetLocalBtn" class="btn-ghost" type="button">Borrar mis datos</button>
               </div>
-              <div class="surface p-5 sm:p-6">
-                <p class="text-base font-semibold">Datos</p>
-                <div class="mt-5 flex flex-wrap gap-2">
-                  <button id="exportBtn" class="btn-ghost" type="button">Exportar JSON</button>
-                  <button id="resetLocalBtn" class="btn-ghost" type="button">Borrar datos locales</button>
-                </div>
-              </div>
+              <p class="mt-3 text-xs faint">El respaldo se descarga en este dispositivo. Borrar datos también elimina la copia de tu cuenta si has iniciado sesión.</p>
             </div>
           </div>
         </section>
@@ -669,7 +640,7 @@
       <nav class="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 lg:hidden" style="padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));" aria-label="Navegación móvil">
         <div class="pointer-events-auto mx-auto flex max-w-lg gap-1 rounded-[20px] border border-[#27272a] bg-[#121214]/95 p-1.5 shadow-[0_18px_45px_rgba(0,0,0,.65)] backdrop-blur-xl">
           <button class="nav-btn" type="button" data-nav="hoy"><span data-nav-icon="hoy"></span><span>Hoy</span></button>
-          <button class="nav-btn" type="button" data-nav="inventario"><span data-nav-icon="inventario"></span><span>Inv.</span></button>
+          <button class="nav-btn" type="button" data-nav="inventario"><span data-nav-icon="inventario"></span><span>Inventario</span></button>
           <button class="nav-btn" type="button" data-nav="rutina"><span data-nav-icon="rutina"></span><span>Rutina</span></button>
           <button class="nav-btn" type="button" data-nav="ajustes"><span data-nav-icon="ajustes"></span><span>Ajustes</span></button>
         </div>
@@ -681,6 +652,6 @@
   <div id="toastRoot" class="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-8"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./app.js?v=20"></script>
+  <script src="./app.js?v=21"></script>
 </body>
 </html>
