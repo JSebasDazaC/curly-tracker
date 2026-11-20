@@ -30,6 +30,8 @@
     * { -webkit-tap-highlight-color: transparent; }
     html { scroll-behavior: smooth; }
     body { font-family: 'Outfit', sans-serif; background: #09090b; color: #fafafa; letter-spacing: -0.01em; }
+    /* El atributo hidden debe ganar siempre, incluso sobre utilidades responsive de Tailwind (lg:grid). */
+    [hidden] { display: none !important; }
     ::selection { background: #fafafa; color: #09090b; }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #09090b; }
@@ -300,7 +302,7 @@
   </div>
 
   <!-- ===================== APP SHELL ===================== -->
-  <div id="appShell" class="hidden lg:grid lg:min-h-screen lg:grid-cols-[264px_minmax(0,1fr)]">
+  <div id="appShell" hidden class="lg:grid lg:min-h-screen lg:grid-cols-[264px_minmax(0,1fr)]">
     <!-- Sidebar -->
     <aside class="sticky top-0 hidden h-screen flex-col border-r border-[#27272a] bg-[#09090b] px-5 py-7 lg:flex">
       <div class="flex items-center gap-3 px-2">

@@ -1646,14 +1646,13 @@
   }
 
   function showApp() {
-    $('#loginScreen').classList.add('hidden');
-    $('#appShell').classList.remove('hidden');
-    $('#appShell').classList.add('lg:grid');
+    $('#loginScreen').hidden = true;
+    $('#appShell').hidden = false;
   }
 
   function showLogin() {
-    $('#loginScreen').classList.remove('hidden');
-    $('#appShell').classList.add('hidden');
+    $('#loginScreen').hidden = false;
+    $('#appShell').hidden = true;
   }
 
   /* ---------------- Identidad social y autenticación ---------------- */
