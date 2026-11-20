@@ -517,7 +517,7 @@
       profile: normalizeProfile(),
       products: [],
       tools: PRESET_TOOLS.map((name) => ({ id: uid(), name, owned: false, preset: true })),
-      settings: { reminderEnabled: true, reminderTime: '08:00', customCursor: false },
+      settings: { reminderEnabled: true, reminderTime: '08:00', customCursor: true },
       logs: {},
       lastNotified: ''
     };
@@ -2881,7 +2881,7 @@
     async register() {
       if (!('serviceWorker' in navigator)) return;
       try {
-        await navigator.serviceWorker.register('./sw.js?v=38');
+        await navigator.serviceWorker.register('./sw.js?v=39');
         this.postSchedule();
       } catch (error) {
         console.warn('Curly Tracker: service worker no registrado.', error);
