@@ -9,6 +9,7 @@
   const SUPABASE_URL = 'https://zrtxpgwkpilfkewwqppk.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_qByFy6Ocr4UBXmuVztUOIA_e8bxjtIM';
   const LS_KEY = 'curly-tracker:v1';
+  const RETURN_TAB_KEY = 'curly_return_tab';
   const AUTH_UNAVAILABLE = 'Supabase no está disponible. Usa el modo local.';
 
   const sb = (window.supabase && window.supabase.createClient)
@@ -776,6 +777,31 @@
     renderNav();
     renderCurrentView();
     window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
+  function saveReturnTab() {
+    try { localStorage.setItem(RETURN_TAB_KEY, currentView); } catch (error) { /* sin almacenamiento */ }
+  }
+
+  function hasReturnTab() {
+    try { return Boolean(localStorage.getItem(RETURN_TAB_KEY)); } catch (error) { return false; }
+  }
+
+  function clearAuthUrl() {
+    const url = new URL(window.location.href);
+    url.search = '';
+    url.hash = '';
+    window.history.replaceState({}, document.title, url.pathname);
+  }
+
+  function restoreReturnTab() {
+    let tab = '';
+    try {
+      tab = localStorage.getItem(RETURN_TAB_KEY) || '';
+      localStorage.removeItem(RETURN_TAB_KEY);
+    } catch (error) { /* sin almacenamiento */ }
+    clearAuthUrl();
+    if (tab && VIEW_LABELS[tab]) setView(tab);
   }
 
   function renderCurrentView() {
@@ -1734,6 +1760,7 @@
   async function oauthSignIn(provider, label) {
     if (!sb) { setAuthError(AUTH_UNAVAILABLE); return; }
     setAuthError('');
+    saveReturnTab();
     const { error } = await sb.auth.signInWithOAuth({
       provider,
       options: { redirectTo: window.location.origin + window.location.pathname }
@@ -1759,6 +1786,7 @@
     clearPendingProfile();
     pendingIdentifier = email;
     forceProfileSetup = authMode === 'signup';
+    saveReturnTab();
     const options = {
       shouldCreateUser: authMode === 'signup',
       emailRedirectTo: window.location.origin + window.location.pathname
@@ -1808,13 +1836,6 @@
 
     if (!errorCode && !tokenHash && !accessToken && !code) return false;
 
-    const cleanUrl = () => {
-      const url = new URL(window.location.href);
-      url.search = '';
-      url.hash = '';
-      window.history.replaceState({}, document.title, url.pathname);
-    };
-
     showAuthCallbackPanel('Verificando el enlace…', 'Activando tu cuenta.', false);
     let failureCode = errorCode;
     try {
@@ -1838,11 +1859,12 @@
         forceProfileSetup = sessionStorage.getItem(PENDING_SIGNUP_KEY) === '1';
         sessionStorage.removeItem(PENDING_SIGNUP_KEY);
       } catch (error) { /* sin sesión */ }
-      cleanUrl();
+      clearAuthUrl();
       showAuthPanel('main');
       await enterWithSession(session);
+      restoreReturnTab();
     } catch (error) {
-      cleanUrl();
+      clearAuthUrl();
       failureCode = failureCode || (error && (error.code || error.message));
       authCallbackError = true;
       showLogin();
@@ -2033,13 +2055,16 @@
     }
     const { data } = await sb.auth.getSession();
     if (authCallbackError) showLogin();
-    else if (data && data.session) await enterWithSession(data.session);
-    else showLogin();
+    else if (data && data.session) {
+      await enterWithSession(data.session);
+      if (hasReturnTab()) restoreReturnTab();
+    } else showLogin();
 
     sb.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
         authCallbackError = false;
         enterWithSession(session);
+        if (hasReturnTab()) restoreReturnTab();
       } else if (event === 'SIGNED_OUT') {
         unsubscribeRealtime();
         syncState.ready = false;
