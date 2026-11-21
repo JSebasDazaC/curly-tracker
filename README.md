@@ -1,99 +1,174 @@
+<div align="center">
+
+<img src="./icon.svg" width="76" alt="Ícono de Curly Tracker" />
+
 # Curly Tracker
 
-PWA monocromática para el control capilar masculino: perfil de rizo, inventario inteligente y una rutina semanal que se adapta a lo que realmente tienes.
+**Tu rizo, tu inventario y tu rutina. En una sola app.**
 
-## Qué incluye
+[ Abrir la app ](https://curly-tracker.vercel.app) · [ Ver el código ](https://github.com/JSebasDazaC/curly-tracker) · [ Enviar una sugerencia ](#buzón)
 
-- **Estética**: Tailwind CSS generado y servido localmente (`tailwind.css`, sin dependencia de CDN), fuente `Outfit` (Google Fonts) y paleta estrictamente monocromática (`#09090b`, `#121214`, `#27272a`, `#a1a1aa`, `#fafafa`). Desplegables personalizados con menú propio (teclado incluido) para perfil, categorías, estado, **hora del recordatorio y fecha del registro**; navegación inferior flotante en móvil y barra lateral en escritorio.
-- **PWA**: `manifest.json` con `display: standalone`, tema `#09090b` e ícono SVG minimalista; `sw.js` con caché offline básica, recordatorios y manejo de `push`/`notificationclick`.
-- **Notificaciones**: permiso con `Notification.requestPermission()`, hora configurable en formato de 12 horas (AM/PM), aviso diario basado en el plan del día y notificación de prueba.
-- **Autenticación**: Google OAuth; acceso sin contraseña con **un solo campo de correo** que envía un código de 6 dígitos; sesión local sin cuenta. Todo con Supabase (`@supabase/supabase-js` servido localmente como `supabase.js`). El código se introduce en la propia app, sin depender de que el correo abra la PWA. En **Mi perfil → Cuenta** se ven los accesos vinculados en filas con **Vincular/Desvincular**; se añaden con `linkIdentity()` y se quitan con `unlinkIdentity()` (requiere activar *Enable Manual Linking* en Supabase y conservar al menos un acceso). El registro pide los datos de perfil después de verificarlo. Si falla o caduca, se muestra una pantalla limpia en español para solicitar otro.
-- **Perfil social**: nombre, apellido, **usuario único**, nombre a mostrar independiente (acepta texto decorativo, tipografías, emojis y símbolos pegados desde otras páginas), biografía, foto de perfil y banner. **Edición in situ**: al pasar el cursor sobre el nombre, el usuario, la biografía o los datos capilares aparece un borde suave y semitransparente como el del editor, sin iconos de más; al hacer clic, el texto se convierte en un input sin fondo, con un borde completo y exactamente la misma caja que tenía en lectura, sin saltos de posición ni tamaño al abrirlo, y crece en tiempo real mientras escribes; Enter guarda (Esc cancela), sin botones de ✓ ni ✕; los datos de selección siguen usando el desplegable personalizado de la app: al pasar el cursor aparece la flecha en lugar del borde y al elegir una opción se guarda. Las fotos también se editan desde su lápiz con *Cambiar/Quitar*. El indicador *Perfil completado* desaparece cuando la tarjeta llega al 100%. La foto y el banner se actualizan a la vez en la tarjeta y los avatares de la navegación; las URLs se escapan correctamente y no se recortan. Los placeholders son genéricos y nunca muestran datos del desarrollador. El usuario aparece justo al lado del nombre a mostrar, con la misma base inferior y un espacio reducido, en gris y con letra más pequeña, y se valida al guardar con índice único en minúsculas. En escritorio, la tarjeta social con el perfil capilar y la tarjeta Cuenta se organizan en dos columnas proporcionalmente a su contenido.
-- **Sincronización**: `user_profile`, `products`, `tools` y `schedule_logs` con RLS por `auth.uid()`. Los cambios hechos en cualquier dispositivo se suben y se reciben en los demás mediante **Supabase Realtime**; al volver del segundo plano también se refresca automáticamente. Las imágenes se guardan en el bucket público `avatars` de Supabase Storage. Solo se muestra **modo local** cuando no hay sesión; si hay sesión pero falla una lectura/escritura, la cuenta sigue apareciendo conectada con el aviso **Sin sincronizar** y la app reintenta sola cada 8 segundos y al volver al frente. Los datos siempre se conservan en localStorage.
+</div>
 
-> Tailwind y Supabase se sirven desde el propio proyecto para que un bloqueo de CDNs externos (adblock, red corporativa, filtros del navegador, etc.) no deje la interfaz sin layout ni la app sin cliente de datos.
+---
 
-- **Vistas, cada dato en una sola casa**:
-  1. **Hoy**: plan del día, racha, sugerencias, resultado y registro del día.
-  2. **Rutina**: los otros seis días; el día de hoy solo es un acceso a Hoy, sin repetir pasos ni registro. Hoy va primero en la fila y en la lista para no tener que desplazarse a encontrarlo.
-  3. **Inventario**: resumen visual de lo disponible y una única barra de herramientas: las 6 categorías a la izquierda y el control *Ver* (Todos / Lista de compra) a la derecha, sin barras apiladas. Estados con selector giratorio, compatibilidad y kits con interruptor.
-  4. **Mi perfil**: identidad social, perfil capilar, cuenta/sesión y accesos vinculados.
-  5. **Ajustes**: recordatorio diario, **buzón de sugerencias y reporte de errores** (abierto a cualquier visitante, se envía a `sebastiandaza0209@gmail.com` mediante FormSubmit.co) y datos (exportar/borrar).
+## En corto
 
-## Puesta en marcha (Live Server)
+Curly Tracker es una **PWA en español** pensada para cuidar el cabello rizado sin hojas de cálculo ni apps de pago.
+
+- Funciona **sin cuenta**, con **Google** o con un **código de 6 dígitos** por correo.
+- Guarda tus datos en el dispositivo y, si inicias sesión, los sincroniza sola.
+- Planea tu rutina con base en **lo que realmente tienes** en el inventario.
+- Es monocromática, instalable y usable offline.
+- No tiene anuncios, rastreadores ni proveedores de pago.
+
+---
+
+## Cómo se usa
+
+| Vista | Para qué sirve |
+| --- | --- |
+| **Hoy** | Tu plan del día, tu racha, las sugerencias y el registro de lo que hiciste. |
+| **Rutina** | Los otros seis días. El de hoy solo es un atajo a *Hoy*, para no repetir información. |
+| **Inventario** | Tus productos organizados por categoría, con estados, compatibilidad, kits y lista de compras en una sola barra. |
+| **Mi perfil** | Tu identidad social, tu perfil capilar y el estado de tu cuenta. |
+| **Ajustes** | Recordatorio diario, buzón de sugerencias, exportación y borrado de datos. |
+
+> Cada dato vive en un solo lugar. Si hoy cambias un producto, la rutina y el inventario lo ven al instante.
+
+---
+
+## Lo que puedes hacer
+
+### Tu perfil
+
+- Editar **nombre, apellido, usuario, nombre a mostrar y biografía** haciendo clic directamente sobre el texto.
+- Pasar el cursor para ver un borde suave; hacer clic para escribir; **Enter guarda** y **Esc cancela**.
+- Cambiar foto y banner desde su lápiz, con opciones de *Cambiar* y *Quitar*.
+- Ver el usuario junto al nombre, en gris y más pequeño, sin etiquetas extras.
+- Pegar texto decorativo en el nombre a mostrar: tipografías, emojis y símbolos de otras páginas.
+
+### Tu inventario
+
+- Seis categorías con su propio ícono y scroll horizontal.
+- Un filtro compacto **Ver → Todos / Lista de compra**, sin barras apiladas.
+- Cambiar estados con un selector: *En uso → Por acabarse → No lo tengo*.
+- Marcar herramientas para que aparezcan en los pasos de la rutina.
+- El horario nunca te pide productos que no tienes; cuando falta algo, lo sugiere de forma discreta.
+
+### Tu rutina
+
+- Ver el plan de cada día y registrar lo que funcionó.
+- Recibir un recordatorio diario a la hora que elijas, en formato de 12 horas.
+- Tener el día de hoy siempre primero y accesible desde un solo toque.
+
+### Tus datos
+
+- Empezar en **modo local** y decidir después si quieres cuenta.
+- Iniciar sesión con Google o con un código enviado a tu correo, sin contraseñas.
+- Sincronizar automáticamente entre dispositivos cuando hay sesión.
+- Exportar un JSON o borrar tus datos cuando quieras.
+
+---
+
+## Cuentas
+
+Tres formas de entrar, sin obligarte a usar ninguna:
+
+| Modo | Qué necesitas | Qué guarda |
+| --- | --- | --- |
+| **Continuar sin cuenta** | Nada | Todo en este dispositivo. |
+| **Google** | Tu cuenta de Google | Copia en la nube y sincronización. |
+| **Correo** | Tu correo y un código de 6 dígitos | Copia en la nube y sincronización. |
+
+En **Mi perfil → Cuenta** puedes ver los accesos vinculados, cerrar sesión o volver al modo local. Si una escritura falla, la app sigue mostrando la cuenta y reintenta sola; mientras tanto verás **Sin sincronizar**.
+
+---
+
+## Detalles que importan
+
+- **Edición sin saltos**: la caja del editor es la misma que la del texto en lectura. Crece mientras escribes y no se mueve al hacer clic.
+- **Placeholders genéricos**: `tu.usuario`, `Tu nombre`, `Añade tu apellido`, `nombre@dominio.com`. Nunca usamos tu nombre, correo ni usuario real como texto de ayuda.
+- **Interfaz local**: Tailwind y Supabase se sirven desde el proyecto, así que un bloqueo de CDNs no rompe el diseño.
+- **Notificaciones**: permiso bajo demanda, hora configurable y aviso diario generado en la propia app. El push remoto real requeriría un servidor con VAPID.
+- **Offline**: el Service Worker mantiene la interfaz y los datos disponibles cuando no hay red.
+- **Instalación**: manifiesto con `display: standalone` e ícono monocromático. Si ya tenías la PWA abierta, ciérrala y ábrela una vez tras cada actualización.
+
+---
+
+## Buzón
+
+¿Encontraste un error o tienes una idea?
+
+Ve a **Ajustes → Buzón de sugerencias y errores**. Cualquier visitante puede escribir, sin necesidad de iniciar sesión.
+
+El formulario envía el mensaje desde la propia app con **FormSubmit.co**. La primera vez, el servicio pide una confirmación al destinatario; después los mensajes llegan normalmente.
+
+---
+
+<details>
+<summary><strong>Ver en local</strong></summary>
 
 1. Abre esta carpeta en VS Code.
-2. Inicia **Live Server** sobre `index.html` (o sirve la carpeta con cualquier servidor estático).
-3. Pulsa **Continuar sin cuenta** para probar sin backend, o entra con Google, o escribe tu correo e introduce el código de 6 dígitos recibido.
+2. Inicia **Live Server** sobre `index.html`, o sirve la carpeta con cualquier servidor estático.
+3. Entra con *Continuar sin cuenta*, con Google o con tu correo.
 
-> Los Service Workers requieren `http://localhost` o HTTPS. `file://` no los registra.
+> Los Service Workers necesitan `http://localhost` o HTTPS. Con `file://` no se registran.
 
-## Buzón de contacto
+</details>
 
-El formulario de **Ajustes → Buzón de sugerencias y errores** usa `https://formsubmit.co/ajax/sebastiandaza0209@gmail.com`. La primera vez que se envíe un mensaje, FormSubmit mandará un correo de confirmación a esa dirección: hay que confirmarlo para activar el buzón. Después, todos los mensajes llegan normalmente.
+<details>
+<summary><strong>Configuración de Supabase</strong></summary>
 
-## Configurar Supabase
+1. Crea un proyecto en [Supabase](https://supabase.com/).
+2. Ejecuta el contenido de `schema.sql` en el editor de consultas. Es idempotente: crea o ajusta tablas, perfil social, índice único de usuario, políticas RLS, Realtime y el bucket de imágenes.
+3. Activa **Google** en *Authentication → Providers* y añade la URL de la app a las URLs permitidas.
+4. Activa **Email OTP** con una plantilla que incluya `{{ .Token }}` y longitud de código `6`.
+5. Activa **Enable Manual Linking** si quieres vincular/desvincular Google desde el perfil.
+6. Recarga la app. Los datos locales se suben automáticamente al iniciar sesión.
 
-1. Entra en [Supabase](https://supabase.com/) y abre el proyecto.
-2. Ve a **SQL Editor → New query**, pega todo `schema.sql` y pulsa **Run**. Es idempotente: crea/actualiza las columnas del perfil social, el índice único de usuario, la función `username_available`, las cuatro tablas, RLS, su inclusión en `supabase_realtime` y el bucket `avatars` con sus políticas de Storage.
-3. Activa el proveedor que quieras usar en **Authentication → Providers**: **Google**. Necesita su propio Client ID/Secret y la *Redirect URL* de Supabase. Activa también **Enable Manual Linking** en la configuración de Authentication para poder vincularlo desde el perfil.
-4. Activa el envío de correo (**Email OTP**) en **Authentication → Providers → Email** y usa una plantilla que incluya `{{ .Token }}` (por ejemplo: `Tu código de Curly Tracker es {{ .Token }}`). La app envía ese código y lo verifica dentro de la PWA con `verifyOtp({ email, token, type: 'email' })`, así que no hace falta abrir ningún enlace. Si la plantilla sigue enviando solo `{{ .ConfirmationURL }}`, el enlace antiguo también sigue funcionando como respaldo. Ajusta **Authentication → Sign In / Providers → Email → OTP Settings → OTP Length = 6** para que coincida con las 6 casillas de la app.
-5. En **Authentication → URL Configuration**, añade la URL de tu despliegue (y `http://localhost:5500` para Live Server; ajusta el puerto) a *Site URL* y *Redirect URLs*.
-6. Recarga la app e inicia sesión. En **Crear cuenta** verás el campo de correo y, tras introducir el código, se abrirá el formulario con usuario, nombre a mostrar y biografía. Después podrás editar todo desde **Mi perfil**. Los datos locales se suben automáticamente.
-7. Si ya tenías la PWA instalada, ciérrala y ábrela de nuevo para que descargue la versión nueva (el Service Worker se actualiza solo).
+La URL y la clave publishable ya están incluidas en `app.js`. Son públicas por diseño; la protección la dan las políticas de acceso.
 
-Las credenciales (URL y clave publishable) ya están configuradas en `app.js`. Son públicas por diseño; la seguridad de los datos la garantizan las políticas RLS de `schema.sql`.
+</details>
 
-### Notas sobre notificaciones
+<details>
+<summary><strong>Despliegue</strong></summary>
 
-- El aviso diario se genera localmente: la pestaña comprueba la hora cada 30 segundos y el Service Worker mantiene un temporizador auxiliar mientras siga activo.
-- El evento `push` del Service Worker está preparado; para push remoto real hace falta un servidor con clave VAPID y un endpoint que envíe mensajes. No es necesario para el recordatorio local.
+El proyecto es estático: no hay variables de entorno obligatorias ni comandos de build.
 
-## Despliegue en Vercel
+- En Vercel, usa **Framework Preset: Other**, **Root Directory: curly-tracker**, y deja build/output vacíos.
+- Por CLI: `cd curly-tracker && vercel`.
+- Si Vercel rechaza el deploy por el autor del commit local, copia la carpeta a una temporal **sin `.git`**, conserva `.vercel/project.json` y ejecuta allí `npx vercel deploy --prod --yes --archive=tgz`.
+- Tras cada deploy, cierra y abre la PWA una vez para descargar la versión nueva.
 
-Opción A — desde la interfaz:
+</details>
 
-1. Crea un repositorio Git con esta carpeta y súbelo a GitHub.
-2. En Vercel → **Add New → Project**, selecciona el repositorio.
-3. **Framework Preset**: *Other*. **Root Directory**: `curly-tracker` (si el repo contiene más carpetas).
-4. **Build Command** y **Output Directory**: déjalos vacíos (o usa `.` como Output Directory).
-5. Deploy. Añade la URL resultante a las Redirect URLs de Supabase.
+<details>
+<summary><strong>Estructura del proyecto</strong></summary>
 
-Opción B — CLI:
-
-```bash
-cd curly-tracker
-vercel
-```
-
-> Si Vercel bloquea el deploy con *“The commit author doesn't have access to this team”*, copia el proyecto a una carpeta temporal **sin `.git`** pero conservando `.vercel/project.json`, y ejecuta allí `vercel deploy --prod --yes --archive=tgz`. Así no se envía la metadata del commit local.
-
-No hay variables de entorno obligatorias: el proyecto es estático y las credenciales de Supabase son la clave publishable incluida en el cliente.
-
-## Estructura
-
-```
+```text
 curly-tracker/
-├── index.html      # Interfaz, layouts y estilos
-├── app.js          # Estado, autenticación, perfil social, Supabase, horario y notificaciones
-├── tailwind.css    # Utilidades Tailwind generadas y servidas localmente
-├── supabase.js     # Cliente Supabase UMD servido localmente
-├── manifest.json   # Metadata PWA
-├── sw.js           # Service Worker (offline + notificaciones)
-├── icon.svg        # Ícono monocromático (fuente)
+├── index.html      # Interfaz, estilos y layouts
+├── app.js          # Estado, vistas, auth, perfil, rutina y sincronización
+├── tailwind.css    # Utilidades generadas, servidas localmente
+├── supabase.js     # Cliente Supabase, servido localmente
+├── manifest.json   # Metadatos de la PWA
+├── sw.js           # Caché offline y notificaciones
+├── icon.svg        # Ícono base, monocromático
 ├── icon-192.png    # Ícono PWA 192 px
 ├── icon-512.png    # Ícono PWA 512 px
-├── schema.sql      # Tablas, perfil social, Storage + RLS + Realtime
-├── .gitignore
-└── README.md
+├── schema.sql      # Estructura de datos, acceso y almacenamiento
+└── README.md       # Este documento
 ```
 
-## Uso rápido
+</details>
 
-- En **Mi perfil** personaliza usuario, nombre a mostrar (con el texto decorativo que quieras pegar), biografía, foto y banner; el cambio se sincroniza solo.
-- Toca el estado de un producto para ciclar entre *En uso → Por acabarse → No lo tengo*.
-- Marca herramientas para que pasen a formar parte de los pasos de la rutina.
-- El horario nunca incluye productos que no tienes; cuando falta algo relevante aparece una sugerencia discreta.
-- En **Hoy** registras el día; en **Rutina**, el acceso de hoy te lleva allí y los otros seis días tienen su propio registro.
-- En **Mi perfil → Cuenta** ves el estado de la sincronización, cierras sesión o vuelves al acceso con código.
-- En **Ajustes** puedes exportar un JSON o borrar tus datos (también la copia de la cuenta si has iniciado sesión).
+---
+
+<div align="center">
+
+Hecho para que cuidar tu rizo sea simple, privado y tuyo.
+
+**[ Abrir Curly Tracker ](https://curly-tracker.vercel.app)**
+
+</div>
